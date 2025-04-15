@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
             } else {
                 setUser(null);
                 setProfile(null);
-                if (pathname !== "/" && pathname !== "/bac-selection") {
+                if (pathname !== "/" && pathname !== "/bac-selection" && pathname !== "/auth/register") {
                     router.push('/auth/login');
                 }
             }
