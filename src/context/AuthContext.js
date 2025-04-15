@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useState, useEffect, useContext } from 'react';
-import { useRouter } from 'next/navigation';
+import {usePathname, useRouter} from 'next/navigation';
 import supabase from "@/lib/supabase";
 
 const AuthContext = createContext();
@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const pathname = usePathname();
 
     // Dans context/AuthContext.js - useEffect mis à jour
     useEffect(() => {
@@ -52,7 +53,8 @@ export function AuthProvider({ children }) {
                         console.error("Erreur lors de la récupération/création du profil:", error);
                     }
                 } else {
-                    router.push('/auth/login');
+
+                    (pathname !== "/" || pathname !=="/bac-selection") && router.push('/auth/login');
                     setUser(null);
                     setProfile(null);
                 }
