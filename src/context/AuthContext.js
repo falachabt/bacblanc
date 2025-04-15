@@ -187,6 +187,7 @@ export function AuthProvider({ children }) {
             setLoading(true);
             const { error } = await supabase.auth.signOut();
             if (error) throw error;
+            localStorage.clear();
             router.push('/');
             router.refresh();
         } catch (error) {

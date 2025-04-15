@@ -7,7 +7,8 @@ import Link from 'next/link';
 import supabase from "@/lib/supabase";
 import {
     BookOpen, Clock, Award, ChevronRight, Lock, Calendar, AlertCircle,
-    RefreshCw, Check, Unlock, CreditCard, Loader, ShieldCheck
+    RefreshCw, Check, Unlock, CreditCard, Loader, ShieldCheck, Home,
+    ArrowLeft, FileText, Settings, BookX, Info
 } from 'lucide-react';
 
 // Composant pour les cartes d'examen
@@ -18,8 +19,8 @@ const ExamCard = ({ exam, hasAccess }) => {
         if (hasAccess) {
             router.push(`/exams/${exam.id}`);
         } else {
-            // Ne fait rien, car l'accès est géré au niveau global maintenant
-            return;
+            // Redirection vers la page de paiement
+            router.push('/payment?globalAccess=true');
         }
     };
 
@@ -29,7 +30,7 @@ const ExamCard = ({ exam, hasAccess }) => {
     return (
         <div
             className={`border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow ${
-                !isAvailable || !hasAccess ? 'bg-white' : 'bg-white cursor-pointer'
+                !isAvailable ? 'bg-white' : hasAccess ? 'bg-white cursor-pointer' : 'bg-white'
             }`}
             onClick={isAvailable && hasAccess ? handleExamClick : undefined}
         >
@@ -85,7 +86,7 @@ const ExamCard = ({ exam, hasAccess }) => {
                             }}
                             className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-full flex items-center"
                         >
-                            <Lock size={12} className="mr-1" />
+                            <Unlock size={12} className="mr-1" />
                             Débloquer
                         </button>
                     )}
@@ -102,6 +103,29 @@ const ExamCard = ({ exam, hasAccess }) => {
     );
 };
 
+// Composant pour l'état vide ou erreur
+const EmptyStateMessage = ({ type, message, actionText, actionHandler, icon: Icon }) => (
+    <div className="text-center py-16 px-4">
+        <div className="rounded-full bg-gray-100 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <Icon size={24} className="text-gray-400" />
+        </div>
+        <p className="text-gray-600 text-lg font-medium">
+            {message}
+        </p>
+        {actionText && (
+            <button
+                onClick={actionHandler}
+                className="mt-6 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors inline-flex items-center"
+            >
+                {type === 'refresh' && <RefreshCw size={14} className="mr-2" />}
+                {type === 'redirect' && <ArrowLeft size={14} className="mr-2" />}
+                {type === 'settings' && <Settings size={14} className="mr-2" />}
+                {actionText}
+            </button>
+        )}
+    </div>
+);
+
 export default function ExamsPage() {
     const router = useRouter();
     const { user, profile, loading: authLoading } = useAuth();
@@ -112,6 +136,7 @@ export default function ExamsPage() {
     const [error, setError] = useState(null);
     const [loadingTimeout, setLoadingTimeout] = useState(null);
     const [lastValidPayment, setLastValidPayment] = useState(null);
+    const [noSubjectsForBacSeries, setNoSubjectsForBacSeries] = useState(false);
 
     // Prix fixe pour tous les examens
     const GLOBAL_ACCESS_PRICE = 200;
@@ -149,6 +174,7 @@ export default function ExamsPage() {
 
             setLoadingTimeout(timeout);
             setLoadingData(true);
+            setNoSubjectsForBacSeries(false);
 
             try {
                 // 1. D'abord, obtenir tous les sujets (subjects) qui correspondent à la série BAC de l'utilisateur
@@ -162,6 +188,7 @@ export default function ExamsPage() {
                 if (!subjectsData || subjectsData.length === 0) {
                     setExams([]);
                     setHasAccessToAllExams(false);
+                    setNoSubjectsForBacSeries(true);
                     setDataFetched(true);
                     setLoadingData(false);
                     clearTimeout(timeout);
@@ -228,11 +255,21 @@ export default function ExamsPage() {
         setDataFetched(false);
         setError(null);
         setExams([]);
+        setNoSubjectsForBacSeries(false);
         // Trigger the useEffect to reload data
         const reloadTimeout = setTimeout(() => {
             clearTimeout(reloadTimeout);
         }, 100);
         setLoadingTimeout(reloadTimeout);
+    };
+
+    // Gérer les différents états d'affichage
+    const handleBackToHome = () => {
+        router.push('/');
+    };
+
+    const handleGoToSettings = () => {
+        router.push('/profile');
     };
 
     // Don't show loading state if already have data
@@ -284,7 +321,7 @@ export default function ExamsPage() {
 
             <div className="container mx-auto px-4">
                 {/* Bannière d'accès premium ou message d'accès actif */}
-                {!hasAccessToAllExams ? (
+                {!hasAccessToAllExams && !noSubjectsForBacSeries && exams.length > 0 ? (
                     <div className="mb-4">
                         <div className="border border-green-200 rounded-lg bg-green-50 overflow-hidden">
                             <div className="p-3 flex items-center justify-between">
@@ -312,7 +349,7 @@ export default function ExamsPage() {
                             </div>
                         </div>
                     </div>
-                ) : lastValidPayment && (
+                ) : lastValidPayment && !noSubjectsForBacSeries && (
                     <div className="mb-4">
                         <div className="border border-green-200 rounded-lg bg-green-50 overflow-hidden">
                             <div className="p-3 flex items-center justify-between">
@@ -349,20 +386,30 @@ export default function ExamsPage() {
                     </div>
                 )}
 
-                {/* Examens */}
-                {exams.length === 0 ? (
-                    <div className="text-center py-16">
-                        <div className="rounded-full bg-gray-100 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                            <BookOpen size={24} className="text-gray-400" />
-                        </div>
-                        <p className="text-gray-500 text-lg font-medium">
-                            Aucun examen n'est disponible pour le moment.
-                        </p>
-                        <p className="text-gray-400 mt-2">
-                            Nous ajoutons régulièrement de nouveaux examens.
-                        </p>
-                    </div>
-                ) : (
+                {/* Message spécifique pour aucun sujet trouvé pour cette série BAC */}
+                {noSubjectsForBacSeries && (
+                    <EmptyStateMessage
+                        type="settings"
+                        message={`Aucun sujet n'est disponible pour la série BAC ${profile?.bac_series}`}
+                        actionText="Modifier mes paramètres"
+                        actionHandler={handleGoToSettings}
+                        icon={BookX}
+                    />
+                )}
+
+                {/* Examens vides (mais sujets existants) */}
+                {!noSubjectsForBacSeries && exams.length === 0 && !error && (
+                    <EmptyStateMessage
+                        type="refresh"
+                        message="Aucun examen n'est disponible pour le moment"
+                        actionText="Actualiser la page"
+                        actionHandler={refreshData}
+                        icon={BookOpen}
+                    />
+                )}
+
+                {/* Liste des examens */}
+                {!noSubjectsForBacSeries && exams.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {exams.map((exam) => (
                             <ExamCard
@@ -374,8 +421,28 @@ export default function ExamsPage() {
                     </div>
                 )}
 
+                {/* Message informatif si pas d'examens mais que la série existe */}
+                {!noSubjectsForBacSeries && exams.length === 0 && !error && (
+                    <div className="mt-8 bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md flex">
+                        <Info size={20} className="text-blue-500 mr-2 flex-shrink-0" />
+                        <div>
+                            <div className="text-sm text-blue-700">
+                                Nous préparons de nouveaux examens pour la série BAC {profile?.bac_series}.
+                                Revenez bientôt pour découvrir les nouveaux contenus.
+                            </div>
+                            <button
+                                onClick={handleBackToHome}
+                                className="mt-2 text-sm text-blue-700 flex items-center"
+                            >
+                                <Home size={14} className="mr-1" />
+                                Retour à l'accueil
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Bouton de déblocage en bas (sur mobile) - uniquement si l'utilisateur n'a pas d'accès */}
-                {!hasAccessToAllExams && exams.length > 1 && (
+                {!hasAccessToAllExams && exams.length > 1 && !noSubjectsForBacSeries && (
                     <div className="fixed bottom-16 left-0 right-0 px-3 py-2 bg-white border-t shadow-sm md:hidden z-10">
                         <button
                             onClick={handleGlobalPayment}
@@ -388,7 +455,7 @@ export default function ExamsPage() {
                 )}
 
                 {/* Bouton de déblocage en bas (sur desktop) - uniquement si l'utilisateur n'a pas d'accès */}
-                {!hasAccessToAllExams && exams.length > 0 && (
+                {!hasAccessToAllExams && exams.length > 0 && !noSubjectsForBacSeries && (
                     <div className="hidden md:block mt-8 text-center">
                         <button
                             onClick={handleGlobalPayment}

@@ -38,6 +38,22 @@ export default function RegisterPage() {
         }
     }, [user, loading, router]);
 
+    // Mapper les IDs de série BAC aux noms complets
+    const getBacSeriesFullName = (id) => {
+        const seriesMap = {
+            'A': 'BAC A - Littéraire',
+            'C': 'BAC C - Mathématiques et Sciences Physiques',
+            'D': 'BAC D - Mathématiques et Sciences Naturelles',
+            'E': 'BAC E - Mathématiques et Sciences Physiques',
+            'TI': 'BAC TI - Sciences et Technologies'
+        };
+        return seriesMap[id] || id;
+    };
+
+    const handleChangeBacSeries = () => {
+        router.push('/bac-selection');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
@@ -85,8 +101,7 @@ export default function RegisterPage() {
             {/* En-tête vert avec logo */}
             <div className="bg-green-900 text-white py-8 px-6 text-center">
                 <div className="rounded-full bg-green-500/10 w-16 h-16 mx-auto flex items-center justify-center mb-4">
-
-                    <Image src={"/icon.png"} className={" rounded-xl "} alt={"logo"} width={256} height={256} />
+                    <Image src={"/icon.png"} className={"rounded-xl"} alt={"logo"} width={256} height={256} />
                 </div>
                 <h2 className="text-2xl font-bold">
                     Créer un compte
@@ -205,22 +220,42 @@ export default function RegisterPage() {
                         </div>
                     </div>
 
-                    {/* Série BAC */}
+                    {/* Série BAC avec bouton de modification */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Série BAC
-                        </label>
-                        <div className="relative">
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium text-gray-700">
+                                Série BAC
+                            </label>
+                            <button
+                                type="button"
+                                onClick={handleChangeBacSeries}
+                                className="text-xs text-green-600 hover:text-green-700 flex items-center"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Modifier
+                            </button>
+                        </div>
+                        <div className="relative flex">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
                             </div>
-                            <div className="pl-10 pr-3 py-3 border border-gray-300 bg-gray-50 rounded-md text-gray-700">
-                                {bacSeries === 'A' && 'BAC A - Littéraire'}
-                                {bacSeries === 'C' && 'BAC C - Mathématiques et Sciences Physiques'}
-                                {bacSeries === 'D' && 'BAC D - Mathématiques et Sciences Naturelles'}
+                            <div className="flex-1 pl-10 pr-3 py-3 border border-gray-300 bg-gray-50 rounded-md text-gray-700">
+                                {getBacSeriesFullName(bacSeries)}
                             </div>
+                            <button
+                                type="button"
+                                onClick={handleChangeBacSeries}
+                                className="flex items-center justify-center px-4 ml-2 border border-green-600 rounded-md text-green-600 hover:bg-green-50"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+                                </svg>
+                                <span className="ml-1 hidden sm:inline">Retour</span>
+                            </button>
                         </div>
                     </div>
 
