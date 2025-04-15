@@ -54,7 +54,6 @@ export function AuthProvider({children}) {
                     }
                 } else {
                     if ((pathname != "/" && pathname != "/bac-selection")) {
-                        console.log("Nouvelle pathname", pathname);
                         router.push('/auth/login');
                     }
 

@@ -380,7 +380,6 @@ export default function PaymentPageContent() {
                 .from('payments')
                 .insert([{
                     user_id: user.id,
-                    exam_id: examId, // null pour un accès global
                     reference,
                     amount,
                     status
