@@ -1,12 +1,12 @@
 'use client';
 
-import { createContext, useState, useEffect, useContext } from 'react';
+import {createContext, useState, useEffect, useContext} from 'react';
 import {usePathname, useRouter} from 'next/navigation';
 import supabase from "@/lib/supabase";
 
 const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
+export function AuthProvider({children}) {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         const getUser = async () => {
             // Vérifie la session de l'utilisateur
-            const { data: { session } } = await supabase.auth.getSession();
+            const {data: {session}} = await supabase.auth.getSession();
 
             if (session?.user) {
                 setUser(session.user);
@@ -38,7 +38,7 @@ export function AuthProvider({ children }) {
         getUser();
 
         // Écouter les changements d'authentification
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        const {data: {subscription}} = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 if (session?.user) {
                     setUser(session.user);
@@ -53,8 +53,11 @@ export function AuthProvider({ children }) {
                         console.error("Erreur lors de la récupération/création du profil:", error);
                     }
                 } else {
+                    if ((pathname != "/" && pathname != "/bac-selection")) {
+                        console.log("Nouvelle pathname", pathname);
+                        router.push('/auth/login');
+                    }
 
-                    (pathname !== "/" || pathname !=="/bac-selection") && router.push('/auth/login');
                     setUser(null);
                     setProfile(null);
                 }
@@ -71,16 +74,16 @@ export function AuthProvider({ children }) {
     const login = async (email, password) => {
         try {
             setLoading(true);
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const {data, error} = await supabase.auth.signInWithPassword({
                 email,
                 password
             });
 
             if (error) throw error;
 
-            return { user: data.user, error: null };
+            return {user: data.user, error: null};
         } catch (error) {
-            return { user: null, error };
+            return {user: null, error};
         } finally {
             setLoading(false);
         }
@@ -92,7 +95,7 @@ export function AuthProvider({ children }) {
             setLoading(true);
 
             // 1. Inscrire l'utilisateur
-            const { data, error: registerError } = await supabase.auth.signUp({
+            const {data, error: registerError} = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
@@ -111,7 +114,7 @@ export function AuthProvider({ children }) {
             }
 
             // 3. Créer le profil utilisateur dans la table users_profiles
-            const { error: profileError } = await supabase
+            const {error: profileError} = await supabase
                 .from('users_profiles')
                 .insert([{
                     id: data.user.id,
@@ -135,10 +138,10 @@ export function AuthProvider({ children }) {
                 throw profileError;
             }
 
-            return { user: data.user, error: null };
+            return {user: data.user, error: null};
         } catch (error) {
             console.error("Erreur d'inscription:", error.message);
-            return { user: null, error };
+            return {user: null, error};
         } finally {
             setLoading(false);
         }
@@ -147,7 +150,7 @@ export function AuthProvider({ children }) {
     const ensureProfileExists = async (userId) => {
         try {
             // Vérifier si le profil existe
-            const { data: existingProfile, error: fetchError } = await supabase
+            const {data: existingProfile, error: fetchError} = await supabase
                 .from('users_profiles')
                 .select('*')
                 .eq('id', userId)
@@ -163,7 +166,7 @@ export function AuthProvider({ children }) {
             }
 
             // Si le profil n'existe pas, récupérer les données d'utilisateur
-            const { data: userData } = await supabase.auth.getUser();
+            const {data: userData} = await supabase.auth.getUser();
 
             if (!userData.user) {
                 throw new Error("Impossible de récupérer les données utilisateur");
@@ -175,7 +178,7 @@ export function AuthProvider({ children }) {
             const bacSeries = metaData.bac_series || '';
 
             // Créer le profil manquant
-            const { data: newProfile, error: insertError } = await supabase
+            const {data: newProfile, error: insertError} = await supabase
                 .from('users_profiles')
                 .insert([{
                     id: userId,
@@ -201,7 +204,7 @@ export function AuthProvider({ children }) {
     const logout = async () => {
         try {
             setLoading(true);
-            const { error } = await supabase.auth.signOut();
+            const {error} = await supabase.auth.signOut();
             if (error) throw error;
             router.push('/');
             router.refresh();
@@ -218,9 +221,9 @@ export function AuthProvider({ children }) {
             setLoading(true);
             if (!user) throw new Error('Aucun utilisateur connecté');
 
-            const { data, error } = await supabase
+            const {data, error} = await supabase
                 .from('users_profiles')
-                .update({ bac_series: bacSeries })
+                .update({bac_series: bacSeries})
                 .eq('id', user.id)
                 .select()
                 .single();
@@ -228,9 +231,9 @@ export function AuthProvider({ children }) {
             if (error) throw error;
 
             setProfile(data);
-            return { data, error: null };
+            return {data, error: null};
         } catch (error) {
-            return { data: null, error };
+            return {data: null, error};
         } finally {
             setLoading(false);
         }

@@ -1,3 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+
+
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,11 +14,25 @@
   --primary-color: #16a34a; /* Green-600 */
   --primary-hover: #15803d; /* Green-700 */
   --primary-light: #dcfce7; /* Green-100 */
+  --body-font: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
+}
+
+* {
+  font-family:'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif !important;
+  box-sizing: border-box;
+  outline: none;
+  text-decoration: none;
+  --dark: rgba(31, 41, 55, 1);
+  --main: #FAFBFB;
+  --d_main-color: rgb(129, 140, 248);
+  --_r: 129;
+  --_g: 140;
+  --_b: 248;
 }
 
 @layer components {
