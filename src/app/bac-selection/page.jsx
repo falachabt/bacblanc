@@ -29,7 +29,7 @@ export default function BacSelectionPage() {
         if (selectedSeries) {
             // Stocker la sélection dans localStorage pour l'utiliser lors de l'inscription
             localStorage.setItem('selectedBacSeries', selectedSeries);
-            router.push('/auth/login');
+            router.push('/auth/register');
         }
     };
 

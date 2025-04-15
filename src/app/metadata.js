@@ -2,17 +2,17 @@
 
 export const metadata = {
     title: {
-        default: 'Elearn Prepa',
+        default: 'Bac Blanc | Elearn Prepa',
         template: '%s | Elearn Prepa',
     },
     description: 'Plateforme dédiée aux administrateur et staff de Elearn Prepa pour gérer les utilisateurs et les données de la plateforme.',
     // keywords: ['influenceur', 'code promo', 'statistiques', 'partenariat', 'affiliation'],
-    authors: [{ name: 'Elearn Prepa', url: 'https://learn.ezadrive.com' }],
+    authors: [{ name: 'Elearn Prepa', url: 'https://elearnbac.ezadrive.com' }],
     creator: 'Elearn Prepa',
     openGraph: {
         type: 'website',
         locale: 'fr_FR',
-        url: 'https://elearn.ezadrive.com/login',
+        url: 'https://elearnbac.ezadrive.com',
         title: 'Elearn Prepa',
         description: 'Plateforme dédiée aux administrateur et staff de Elearn Prepa pour gérer les utilisateurs et les données de la plateforme.',
         siteName: 'Elearn Prepa',
