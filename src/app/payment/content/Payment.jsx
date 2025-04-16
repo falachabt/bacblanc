@@ -8,7 +8,7 @@ import { notchpay } from '@/lib/notchpay';
 import {
     CreditCard, ShoppingBag, Phone, Clock, Award, ArrowRight,
     ChevronLeft, Loader, CheckCircle, XCircle, AlertTriangle,
-    RefreshCw, Home
+    RefreshCw, Home, List, ChevronDown, ChevronUp, PlusCircle
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -116,6 +116,78 @@ const StatusIndicator = ({ status }) => {
     );
 };
 
+// Nouveau composant pour afficher la liste des paiements précédents
+const PaymentHistoryList = ({ payments, onSelect, onClose }) => {
+    if (!payments || payments.length === 0) {
+        return (
+            <div className="text-center py-4">
+                <p className="text-gray-500">Aucun paiement trouvé</p>
+            </div>
+        );
+    }
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const getStatusBadge = (status) => {
+        const statusColors = {
+            complete: 'bg-green-100 text-green-800 border-green-200',
+            pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+            processing: 'bg-blue-100 text-blue-800 border-blue-200',
+            failed: 'bg-red-100 text-red-800 border-red-200',
+            canceled: 'bg-gray-100 text-gray-800 border-gray-200',
+            rejected: 'bg-red-100 text-red-800 border-red-200',
+            abandoned: 'bg-gray-100 text-gray-800 border-gray-200',
+            expired: 'bg-red-100 text-red-800 border-red-200',
+            refunded: 'bg-purple-100 text-purple-800 border-purple-200',
+            'partialy-refunded': 'bg-purple-100 text-purple-800 border-purple-200',
+            incomplete: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        };
+
+        const color = statusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+        return <span className={`text-xs px-2 py-1 rounded-full border ${color}`}>{status}</span>;
+    };
+
+    return (
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-auto mb-4">
+            <div className="flex justify-between items-center p-3 border-b">
+                <h3 className="font-medium">Historique des paiements</h3>
+                <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                    <XCircle size={18} />
+                </button>
+            </div>
+            <ul className="divide-y divide-gray-200">
+                {payments.map((payment) => (
+                    <li
+                        key={payment.id}
+                        className="p-3 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => onSelect(payment)}
+                    >
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium text-sm truncate" style={{ maxWidth: '70%' }}>
+                                {payment.reference}
+                            </span>
+                            {getStatusBadge(payment.status)}
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500">
+                            <span>{payment.amount} FCFA</span>
+                            <span>{formatDate(payment.created_at)}</span>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
 export default function PaymentPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -128,6 +200,7 @@ export default function PaymentPageContent() {
     const [exam, setExam] = useState(null);
     const [loadingData, setLoadingData] = useState(true);
     const [error, setError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(null);
     const [phone, setPhone] = useState('');
     const [processingPayment, setProcessingPayment] = useState(false);
     const [paymentUrl, setPaymentUrl] = useState(null);
@@ -138,6 +211,14 @@ export default function PaymentPageContent() {
     const [isCheckingStatus, setIsCheckingStatus] = useState(false);
     const [checkCount, setCheckCount] = useState(0);
     const [currentReference, setCurrentReference] = useState(paymentReference);
+
+    // Nouvel état pour le mode d'affichage
+    const [displayMode, setDisplayMode] = useState('form'); // 'form', 'status', 'history'
+
+    // État pour l'historique des paiements
+    const [paymentHistory, setPaymentHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
 
     // Prix fixe pour l'accès global
     const GLOBAL_ACCESS_PRICE = 200;
@@ -167,6 +248,7 @@ export default function PaymentPageContent() {
                     setPaymentStatus(data.status || 'pending');
                     setIsCheckingStatus(true);
                     setCurrentReference(paymentReference);
+                    setDisplayMode('status');
                     setLoadingData(false);
                     return;
                 } catch (error) {
@@ -195,6 +277,7 @@ export default function PaymentPageContent() {
                         setPaymentStatus(latestPayment.status);
                         setIsCheckingStatus(true);
                         setCurrentReference(latestPayment.reference);
+                        setDisplayMode('status');
                         setLoadingData(false);
                         return;
                     }
@@ -237,27 +320,61 @@ export default function PaymentPageContent() {
         fetchData();
     }, [examId, isGlobalAccess, paymentReference, user]);
 
+    // Fonction pour charger l'historique des paiements
+    const fetchPaymentHistory = async () => {
+        if (!user) return;
+
+        setLoadingHistory(true);
+
+        try {
+            const { data, error } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+
+            setPaymentHistory(data || []);
+            setShowHistory(true);
+
+            // Réinitialiser les messages
+            setError(null);
+            setSuccessMessage(null);
+        } catch (error) {
+            console.error('Error fetching payment history:', error.message);
+            setSuccessMessage(null);
+            setError('Impossible de charger l\'historique des paiements.');
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
     // Fonction pour vérifier le statut du paiement via l'API Notch Pay
-    const checkPaymentStatus = async () => {
-        if (!currentReference) return;
+    const checkPaymentStatus = async (reference = currentReference) => {
+        if (!reference) return;
 
         setIsCheckingStatus(true);
 
         try {
             // Appel à l'API pour vérifier le statut
-            const response = await fetch(`/api/payments/verify?reference=${currentReference}`);
+            const response = await fetch(`/api/payments/verify?reference=${reference}`);
             const data = await response.json();
 
             if (response.ok) {
                 const newStatus = data.transaction?.status || 'pending';
+                const paymentInfo = data.payment;
 
                 // Si le statut a changé, mettre à jour dans la base de données
                 if (newStatus !== paymentStatus) {
                     setPaymentStatus(newStatus);
-                    await updatePaymentStatusInDb(newStatus);
+                    await updatePaymentStatusInDb(reference, newStatus);
                 }
 
-                setPaymentData(data.payment);
+                setPaymentData(paymentInfo);
+                setCurrentReference(reference);
+                return { status: newStatus, payment: paymentInfo };
             } else {
                 throw new Error(data.message || 'Erreur lors de la vérification du paiement');
             }
@@ -270,15 +387,92 @@ export default function PaymentPageContent() {
         }
     };
 
+    // Nouvelle fonction pour vérifier tous les paiements en attente
+    const checkAllPendingPayments = async () => {
+        if (!user) return;
+
+        setIsCheckingStatus(true);
+        setError(null);
+
+        try {
+            // Récupérer tous les paiements en attente/en cours
+            const { data: pendingPayments, error } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('user_id', user.id)
+                .in('status', ['pending', 'processing'])
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (!pendingPayments || pendingPayments.length === 0) {
+                setError('Aucun paiement en attente trouvé.');
+                return;
+            }
+
+            // Vérifier chaque paiement en attente
+            const results = [];
+            for (const payment of pendingPayments) {
+                try {
+                    const response = await fetch(`/api/payments/verify?reference=${payment.reference}`);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        const newStatus = data.transaction?.status || 'pending';
+
+                        // Mettre à jour dans la base de données si le statut a changé
+                        if (newStatus !== payment.status) {
+                            await updatePaymentStatusInDb(payment.reference, newStatus);
+                        }
+
+                        results.push({
+                            reference: payment.reference,
+                            oldStatus: payment.status,
+                            newStatus: newStatus,
+                            updated: newStatus !== payment.status
+                        });
+
+                        // Si c'est le paiement actuellement affiché, mettre à jour l'interface
+                        if (payment.reference === currentReference) {
+                            setPaymentStatus(newStatus);
+                            setPaymentData({...payment, status: newStatus});
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Error checking payment ${payment.reference}:`, err);
+                }
+            }
+
+            // Mettre à jour l'historique des paiements
+            fetchPaymentHistory();
+
+            // Afficher un message de succès si des statuts ont été mis à jour
+            const updatedCount = results.filter(r => r.updated).length;
+            if (updatedCount > 0) {
+                setError(`${updatedCount} paiement(s) ont été mis à jour.`);
+            } else {
+                setError('Tous les paiements sont à jour.');
+            }
+
+            return results;
+        } catch (error) {
+            console.error('Bulk payment verification error:', error);
+            setSuccessMessage(null);
+            setError('Une erreur est survenue lors de la vérification des paiements.');
+        } finally {
+            setIsCheckingStatus(false);
+        }
+    };
+
     // Mettre à jour le statut de paiement dans la base de données
-    const updatePaymentStatusInDb = async (status) => {
-        if (!currentReference) return;
+    const updatePaymentStatusInDb = async (reference, status) => {
+        if (!reference) return;
 
         try {
             const { error } = await supabase
                 .from('payments')
                 .update({ status: status })
-                .eq('reference', currentReference);
+                .eq('reference', reference);
 
             if (error) throw error;
         } catch (error) {
@@ -301,12 +495,31 @@ export default function PaymentPageContent() {
         }
     }, [currentReference, paymentStatus, checkCount]);
 
-    // Vérification initiale si nous avons une référence
+    // Vérification initiale si nous avons une référence et gestion du focus
     useEffect(() => {
-        if (currentReference && paymentStatus) {
+        // Vérification initiale du paiement
+        if (currentReference && paymentStatus && displayMode === 'status') {
             checkPaymentStatus();
         }
-    }, [currentReference]);
+
+        // Fonction pour réinitialiser les états de chargement lors du changement de visibilité
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                // Si la page regagne le focus
+                setIsCheckingStatus(false);
+                setLoadingHistory(false);
+                setProcessingPayment(false);
+            }
+        };
+
+        // Ajouter l'écouteur d'événement
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Nettoyage
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [currentReference, paymentStatus, displayMode]);
 
     const handlePayment = async (e) => {
         e.preventDefault();
@@ -318,6 +531,7 @@ export default function PaymentPageContent() {
 
         setProcessingPayment(true);
         setError(null);
+        setSuccessMessage(null);
 
         try {
             // Format phone number (remove Cameroon prefix if present)
@@ -335,7 +549,6 @@ export default function PaymentPageContent() {
                 channel: 'cm.mobile',
                 metadata: {
                     user_id: user.id,
-                    exam_id: isGlobalAccess ? null : exam.id, // null pour accès global
                     is_global_access: isGlobalAccess
                 }
             };
@@ -364,9 +577,11 @@ export default function PaymentPageContent() {
                 setCurrentReference(reference);
                 setPaymentStatus('pending');
                 setIsCheckingStatus(true);
+                setDisplayMode('status');
             }
         } catch (error) {
             console.error('Payment error:', error);
+            setSuccessMessage(null);
             setError('Une erreur est survenue lors du traitement du paiement.');
         } finally {
             setProcessingPayment(false);
@@ -397,6 +612,30 @@ export default function PaymentPageContent() {
     // Fonction pour réessayer manuellement la vérification
     const handleRetryCheck = () => {
         checkPaymentStatus();
+    };
+
+    // Fonction pour sélectionner un paiement dans l'historique
+    const handleSelectPayment = async (payment) => {
+        setShowHistory(false);
+
+        // Vérifier le statut du paiement sélectionné
+        const result = await checkPaymentStatus(payment.reference);
+
+        if (result) {
+            setPaymentData(result.payment);
+            setPaymentStatus(result.status);
+            setCurrentReference(payment.reference);
+            setDisplayMode('status');
+        }
+    };
+
+    // Fonction pour démarrer un nouveau paiement
+    const startNewPayment = () => {
+        setPaymentData(null);
+        setPaymentStatus(null);
+        setCurrentReference(null);
+        setDisplayMode('form');
+        setPhone('');
     };
 
     if (loading || loadingData) {
@@ -470,32 +709,14 @@ export default function PaymentPageContent() {
     }
 
     // Si nous suivons le statut d'un paiement
-    if (paymentStatus) {
+    if (displayMode === 'status') {
         // Actions possibles en fonction du statut
         const renderStatusActions = () => {
             const isTerminalStatus = ['complete', 'failed', 'canceled', 'rejected', 'abandoned', 'expired', 'refunded', 'partialy-refunded'].includes(paymentStatus);
 
             return (
                 <div className="mt-4 space-y-3">
-                    {['pending', 'processing'].includes(paymentStatus) && (
-                        <button
-                            onClick={handleRetryCheck}
-                            disabled={isCheckingStatus}
-                            className={`w-full flex items-center justify-center py-2 px-4 border border-green-300 rounded-lg text-green-700 bg-green-50 ${isCheckingStatus ? 'opacity-70 cursor-not-allowed' : 'hover:bg-green-100'}`}
-                        >
-                            {isCheckingStatus ? (
-                                <>
-                                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                                    Vérification...
-                                </>
-                            ) : (
-                                <>
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Actualiser le statut
-                                </>
-                            )}
-                        </button>
-                    )}
+                    {/* Plus de bouton "Actualiser le statut" individuel - uniquement "Actualiser tous" en haut */}
 
                     {isTerminalStatus && paymentStatus === 'complete' && (
                         <Link
@@ -507,20 +728,14 @@ export default function PaymentPageContent() {
                         </Link>
                     )}
 
-                    {isTerminalStatus && paymentStatus !== 'complete' && (
-                        <button
-                            onClick={() => {
-                                // Réinitialiser l'état pour recommencer le paiement
-                                setPaymentStatus(null);
-                                setPaymentData(null);
-                                setCurrentReference(null);
-                            }}
-                            className="w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
-                        >
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Réessayer le paiement
-                        </button>
-                    )}
+                    {/* Bouton pour faire un nouveau paiement - disponible sur tous les statuts */}
+                    <button
+                        onClick={startNewPayment}
+                        className="w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+                    >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        {isTerminalStatus && paymentStatus !== 'complete' ? 'Réessayer le paiement' : 'Nouveau paiement'}
+                    </button>
 
                     <Link
                         href="/exams"
@@ -569,11 +784,49 @@ export default function PaymentPageContent() {
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Date:</span>
                                     <span className="font-medium">
-                                        {new Date().toLocaleDateString()}
+                                        {new Date(paymentData.created_at || new Date()).toLocaleDateString()}
                                     </span>
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {/* Boutons pour voir l'historique et vérifier tous les paiements */}
+                    <div className="flex space-x-2 mb-4">
+                        <button
+                            onClick={fetchPaymentHistory}
+                            disabled={loadingHistory}
+                            className="flex-1 flex items-center justify-center py-2 px-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                        >
+                            {loadingHistory ? (
+                                <Loader className="mr-1 h-4 w-4 animate-spin" />
+                            ) : (
+                                <List className="mr-1 h-4 w-4" />
+                            )}
+                            Voir mes paiements
+                        </button>
+
+                        <button
+                            onClick={checkAllPendingPayments}
+                            disabled={isCheckingStatus}
+                            className="flex-1 flex items-center justify-center py-2 px-2 border border-green-300 rounded-lg text-green-700 bg-green-50 hover:bg-green-100"
+                        >
+                            {isCheckingStatus ? (
+                                <Loader className="mr-1 h-4 w-4 animate-spin" />
+                            ) : (
+                                <RefreshCw className="mr-1 h-4 w-4" />
+                            )}
+                            Actualiser tous
+                        </button>
+                    </div>
+
+                    {/* Affichage de l'historique des paiements */}
+                    {showHistory && (
+                        <PaymentHistoryList
+                            payments={paymentHistory}
+                            onSelect={handleSelectPayment}
+                            onClose={() => setShowHistory(false)}
+                        />
                     )}
 
                     {/* Actions disponibles */}
@@ -647,10 +900,40 @@ export default function PaymentPageContent() {
                     )}
                 </div>
 
-                {/* Message d'erreur */}
+                {/* Messages de notification */}
                 {error && (
                     <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-3 rounded">
                         <div className="text-sm text-red-700">{error}</div>
+                    </div>
+                )}
+
+                {successMessage && (
+                    <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-3 rounded">
+                        <div className="text-sm text-green-700">{successMessage}</div>
+                    </div>
+                )}
+
+                {/* Détails du paiement */}
+                {paymentData && (
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 mb-4">
+                        <h3 className="font-medium text-gray-800 mb-2 text-sm">Détails de la transaction</h3>
+
+                        <div className="space-y-2 text-xs">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Référence:</span>
+                                <span className="font-medium">{currentReference}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Montant:</span>
+                                <span className="font-medium">{paymentData.amount} FCFA</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Date:</span>
+                                <span className="font-medium">
+                                        {new Date(paymentData.created_at || new Date()).toLocaleDateString()}
+                                    </span>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -702,45 +985,54 @@ export default function PaymentPageContent() {
                     </button>
                 </form>
 
-                {/* Vérifier paiement précédent */}
+                {/* Voir les paiements précédents */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
-                    <p className="text-sm text-gray-600 text-center mb-3">
-                        Vous avez déjà effectué un paiement ?
-                    </p>
-                    <button
-                        onClick={async () => {
-                            setLoadingData(true);
+                    <div className="flex space-x-2 mb-3">
+                        <button
+                            onClick={fetchPaymentHistory}
+                            disabled={loadingHistory}
+                            className="flex-1 flex justify-center items-center py-2 px-2 border border-green-300 rounded-lg text-green-700 bg-green-50 hover:bg-green-100"
+                        >
+                            {loadingHistory ? (
+                                <>
+                                    <Loader className="mr-1 h-4 w-4 animate-spin" />
+                                    Chargement...
+                                </>
+                            ) : (
+                                <>
+                                    <List className="mr-1" size={16} />
+                                    Mes paiements
+                                </>
+                            )}
+                        </button>
 
-                            try {
-                                const { data, error } = await supabase
-                                    .from('payments')
-                                    .select('*')
-                                    .eq('user_id', user.id)
-                                    .order('created_at', { ascending: false })
-                                    .limit(1);
+                        <button
+                            onClick={checkAllPendingPayments}
+                            disabled={isCheckingStatus}
+                            className="flex-1 flex justify-center items-center py-2 px-2 border border-blue-300 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100"
+                        >
+                            {isCheckingStatus ? (
+                                <>
+                                    <Loader className="mr-1 h-4 w-4 animate-spin" />
+                                    Vérification...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="mr-1" size={16} />
+                                    Tout actualiser
+                                </>
+                            )}
+                        </button>
+                    </div>
 
-                                if (error) throw error;
-
-                                if (data && data.length > 0) {
-                                    setPaymentData(data[0]);
-                                    setPaymentStatus(data[0].status);
-                                    setIsCheckingStatus(true);
-                                    setCurrentReference(data[0].reference);
-                                } else {
-                                    setError("Aucun paiement trouvé pour votre compte.");
-                                }
-                            } catch (error) {
-                                console.error('Error fetching previous payments:', error);
-                                setError("Impossible de récupérer vos paiements précédents.");
-                            } finally {
-                                setLoadingData(false);
-                            }
-                        }}
-                        className="w-full flex justify-center items-center py-2 px-4 border border-green-300 rounded-lg text-green-700 bg-green-50 hover:bg-green-100"
-                    >
-                        <RefreshCw className="mr-2" size={16} />
-                        Vérifier mon dernier paiement
-                    </button>
+                    {/* Affichage de l'historique des paiements */}
+                    {showHistory && (
+                        <PaymentHistoryList
+                            payments={paymentHistory}
+                            onSelect={handleSelectPayment}
+                            onClose={() => setShowHistory(false)}
+                        />
+                    )}
                 </div>
 
                 {/* Bouton de retour et notification */}
@@ -755,7 +1047,7 @@ export default function PaymentPageContent() {
 
                     {/* Message informatif */}
                     <p className="text-xs text-gray-500 mt-4">
-                        Note: Si vous avez déjà un paiement en cours, il vous sera automatiquement présenté.
+                        Note: Vous pouvez consulter l'historique de vos paiements à tout moment.
                     </p>
                 </div>
             </div>
