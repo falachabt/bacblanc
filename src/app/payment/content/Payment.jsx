@@ -543,7 +543,7 @@ export default function PaymentPageContent() {
                 currency: 'XAF',
                 email: user.email,
                 description: isGlobalAccess
-                    ? `Accès à tous les examens`
+                    ? `Elearn prepa | Challenge Bac Blanc`
                     : `Paiement pour l'examen: ${exam.title}`,
                 phone: formattedPhone,
                 channel: 'cm.mobile',
@@ -560,6 +560,7 @@ export default function PaymentPageContent() {
                 // If direct charge failed, but init succeeded, we have a checkout URL
                 if (initResponse && initResponse.authorization_url) {
                     setPaymentUrl(initResponse.authorization_url);
+                    createPaymentRecord(null, initResponse.transaction.reference, 'pending', isGlobalAccess ? GLOBAL_ACCESS_PRICE : exam.price);
                 } else {
                     throw new Error(paymentError);
                 }
