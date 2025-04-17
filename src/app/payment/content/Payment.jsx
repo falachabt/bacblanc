@@ -220,6 +220,9 @@ export default function PaymentPageContent() {
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
 
+    // État pour suivre si l'utilisateur a déjà un paiement complet
+    const [hasCompletePayment, setHasCompletePayment] = useState(false);
+
     // Prix fixe pour l'accès global
     const GLOBAL_ACCESS_PRICE = 200;
 
@@ -230,9 +233,38 @@ export default function PaymentPageContent() {
         }
     }, [user, loading, router]);
 
+    // Vérifier si l'utilisateur a déjà un paiement complet
+    const checkForCompletePayment = async () => {
+        if (!user) return false;
+
+        try {
+            const { data, error } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('status', 'complete')
+                .limit(1);
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                setHasCompletePayment(true);
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Error checking for complete payment:', error.message);
+            return false;
+        }
+    };
+
     // Chargement des détails de l'examen si non global
     useEffect(() => {
         const fetchData = async () => {
+            // Vérifier si l'utilisateur a déjà un paiement complet
+            const hasComplete = await checkForCompletePayment();
+
             // Si on vérifie un paiement existant via l'URL, chercher d'abord ce paiement
             if (paymentReference) {
                 try {
@@ -244,8 +276,11 @@ export default function PaymentPageContent() {
 
                     if (error) throw error;
 
+                    // Vérifier le statut actuel via l'API avant d'afficher
+                    const updatedStatus = await checkPaymentStatus(paymentReference);
+
                     setPaymentData(data);
-                    setPaymentStatus(data.status || 'pending');
+                    setPaymentStatus(updatedStatus?.status || data.status || 'pending');
                     setIsCheckingStatus(true);
                     setCurrentReference(paymentReference);
                     setDisplayMode('status');
@@ -270,11 +305,16 @@ export default function PaymentPageContent() {
 
                     if (paymentsError) throw paymentsError;
 
-                    // Si un paiement en cours est trouvé, passer en mode suivi
+                    // Si un paiement en cours est trouvé, vérifier son statut actuel et passer en mode suivi
                     if (existingPayments && existingPayments.length > 0) {
                         const latestPayment = existingPayments[0];
+
+                        // Vérifier le statut actuel via l'API
+                        const updatedStatus = await checkPaymentStatus(latestPayment.reference);
+                        const currentStatus = updatedStatus?.status || latestPayment.status;
+
                         setPaymentData(latestPayment);
-                        setPaymentStatus(latestPayment.status);
+                        setPaymentStatus(currentStatus);
                         setIsCheckingStatus(true);
                         setCurrentReference(latestPayment.reference);
                         setDisplayMode('status');
@@ -370,6 +410,11 @@ export default function PaymentPageContent() {
                 if (newStatus !== paymentStatus) {
                     setPaymentStatus(newStatus);
                     await updatePaymentStatusInDb(reference, newStatus);
+
+                    // Si le paiement est passé à "complet", l'utilisateur a un paiement complet
+                    if (newStatus === 'complete') {
+                        setHasCompletePayment(true);
+                    }
                 }
 
                 setPaymentData(paymentInfo);
@@ -423,6 +468,11 @@ export default function PaymentPageContent() {
                         // Mettre à jour dans la base de données si le statut a changé
                         if (newStatus !== payment.status) {
                             await updatePaymentStatusInDb(payment.reference, newStatus);
+
+                            // Si un paiement est passé à "complete", l'utilisateur a un paiement complet
+                            if (newStatus === 'complete') {
+                                setHasCompletePayment(true);
+                            }
                         }
 
                         results.push({
@@ -449,9 +499,11 @@ export default function PaymentPageContent() {
             // Afficher un message de succès si des statuts ont été mis à jour
             const updatedCount = results.filter(r => r.updated).length;
             if (updatedCount > 0) {
-                setError(`${updatedCount} paiement(s) ont été mis à jour.`);
+                setSuccessMessage(`${updatedCount} paiement(s) ont été mis à jour.`);
+                setError(null);
             } else {
-                setError('Tous les paiements sont à jour.');
+                setSuccessMessage('Tous les paiements sont à jour.');
+                setError(null);
             }
 
             return results;
@@ -523,6 +575,13 @@ export default function PaymentPageContent() {
 
     const handlePayment = async (e) => {
         e.preventDefault();
+
+        // Vérifier si l'utilisateur a déjà un paiement complet
+        const hasComplete = await checkForCompletePayment();
+        if (hasComplete) {
+            setError('Vous avez déjà un paiement complété. Vous ne pouvez pas effectuer un nouveau paiement.');
+            return;
+        }
 
         if (!phone || phone.length < 9) {
             setError('Veuillez entrer un numéro de téléphone valide.');
@@ -610,11 +669,6 @@ export default function PaymentPageContent() {
         }
     };
 
-    // Fonction pour réessayer manuellement la vérification
-    const handleRetryCheck = () => {
-        checkPaymentStatus();
-    };
-
     // Fonction pour sélectionner un paiement dans l'historique
     const handleSelectPayment = async (payment) => {
         setShowHistory(false);
@@ -631,7 +685,14 @@ export default function PaymentPageContent() {
     };
 
     // Fonction pour démarrer un nouveau paiement
-    const startNewPayment = () => {
+    const startNewPayment = async () => {
+        // Vérifier si l'utilisateur a déjà un paiement complet
+        const hasComplete = await checkForCompletePayment();
+        if (hasComplete) {
+            setError('Vous avez déjà un paiement complété. Vous ne pouvez pas effectuer un nouveau paiement.');
+            return;
+        }
+
         setPaymentData(null);
         setPaymentStatus(null);
         setCurrentReference(null);
@@ -717,8 +778,6 @@ export default function PaymentPageContent() {
 
             return (
                 <div className="mt-4 space-y-3">
-                    {/* Plus de bouton "Actualiser le statut" individuel - uniquement "Actualiser tous" en haut */}
-
                     {isTerminalStatus && paymentStatus === 'complete' && (
                         <Link
                             href="/exams"
@@ -729,14 +788,16 @@ export default function PaymentPageContent() {
                         </Link>
                     )}
 
-                    {/* Bouton pour faire un nouveau paiement - disponible sur tous les statuts */}
-                    <button
-                        onClick={startNewPayment}
-                        className="w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
-                    >
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        {isTerminalStatus && paymentStatus !== 'complete' ? 'Réessayer le paiement' : 'Nouveau paiement'}
-                    </button>
+                    {/* Bouton pour faire un nouveau paiement - disponible seulement si le statut n'est pas 'complete' */}
+                    {paymentStatus !== 'complete' && !hasCompletePayment && (
+                        <button
+                            onClick={startNewPayment}
+                            className="w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+                        >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            {isTerminalStatus ? 'Réessayer le paiement' : 'Nouveau paiement'}
+                        </button>
+                    )}
 
                     <Link
                         href="/exams"
@@ -792,6 +853,19 @@ export default function PaymentPageContent() {
                         </div>
                     )}
 
+                    {/* Messages de notification */}
+                    {error && (
+                        <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-3 rounded">
+                            <div className="text-sm text-red-700">{error}</div>
+                        </div>
+                    )}
+
+                    {successMessage && (
+                        <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-3 rounded">
+                            <div className="text-sm text-green-700">{successMessage}</div>
+                        </div>
+                    )}
+
                     {/* Boutons pour voir l'historique et vérifier tous les paiements */}
                     <div className="flex space-x-2 mb-4">
                         <button
@@ -817,7 +891,7 @@ export default function PaymentPageContent() {
                             ) : (
                                 <RefreshCw className="mr-1 h-4 w-4" />
                             )}
-                            Actualiser tous
+                            Actualiser
                         </button>
                     </div>
 
@@ -914,77 +988,73 @@ export default function PaymentPageContent() {
                     </div>
                 )}
 
-                {/* Détails du paiement */}
-                {paymentData && (
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 mb-4">
-                        <h3 className="font-medium text-gray-800 mb-2 text-sm">Détails de la transaction</h3>
-
-                        <div className="space-y-2 text-xs">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Référence:</span>
-                                <span className="font-medium">{currentReference}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Montant:</span>
-                                <span className="font-medium">{paymentData.amount} FCFA</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Date:</span>
-                                <span className="font-medium">
-                                        {new Date(paymentData.created_at || new Date()).toLocaleDateString()}
-                                    </span>
+                {/* Afficher message si l'utilisateur a déjà un paiement complet */}
+                {hasCompletePayment && (
+                    <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-3 rounded">
+                        <div className="text-sm text-green-700">
+                            Vous avez déjà un paiement complété. Vous pouvez accéder aux examens.
+                            <div className="mt-2">
+                                <Link
+                                    href="/exams"
+                                    className="flex items-center justify-center py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+                                >
+                                    Accéder aux examens
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Link>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Formulaire de paiement */}
-                <form onSubmit={handlePayment} className="space-y-4">
-                    <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                            Numéro de téléphone (Mobile Money)
-                        </label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                <Phone size={16} />
+                {/* Formulaire de paiement - caché si l'utilisateur a déjà un paiement complet */}
+                {!hasCompletePayment && (
+                    <form onSubmit={handlePayment} className="space-y-4">
+                        <div>
+                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                                Numéro de téléphone (Mobile Money)
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                    <Phone size={16} />
+                                </div>
+                                <input
+                                    type="tel"
+                                    id="phone"
+                                    placeholder="6XXXXXXXX"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                    required
+                                />
                             </div>
-                            <input
-                                type="tel"
-                                id="phone"
-                                placeholder="6XXXXXXXX"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                                required
-                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Format: 6XXXXXXXX (sans préfixe 237)
+                            </p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                            Format: 6XXXXXXXX (sans préfixe 237)
-                        </p>
-                    </div>
 
-                    <button
-                        type="submit"
-                        disabled={processingPayment}
-                        className={`w-full flex justify-center items-center py-3 px-4 rounded-lg text-white font-medium ${
-                            processingPayment
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-green-600 hover:bg-green-700'
-                        }`}
-                    >
-                        {processingPayment ? (
-                            <>
-                                <Loader className="w-5 h-5 animate-spin mr-2" />
-                                Traitement en cours...
-                            </>
-                        ) : (
-                            <>
-                                Payer maintenant
-                                <CreditCard className="ml-2" size={16} />
-                            </>
-                        )}
-                    </button>
-                </form>
+                        <button
+                            type="submit"
+                            disabled={processingPayment}
+                            className={`w-full flex justify-center items-center py-3 px-4 rounded-lg text-white font-medium ${
+                                processingPayment
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-green-600 hover:bg-green-700'
+                            }`}
+                        >
+                            {processingPayment ? (
+                                <>
+                                    <Loader className="w-5 h-5 animate-spin mr-2" />
+                                    Traitement en cours...
+                                </>
+                            ) : (
+                                <>
+                                    Payer maintenant
+                                    <CreditCard className="ml-2" size={16} />
+                                </>
+                            )}
+                        </button>
+                    </form>
+                )}
 
                 {/* Voir les paiements précédents */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
@@ -1020,7 +1090,7 @@ export default function PaymentPageContent() {
                             ) : (
                                 <>
                                     <RefreshCw className="mr-1" size={16} />
-                                    Tout actualiser
+                                    Actualiser
                                 </>
                             )}
                         </button>

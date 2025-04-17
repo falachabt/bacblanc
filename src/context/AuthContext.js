@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import supabase from "@/lib/supabase";
 
@@ -13,19 +13,24 @@ export function AuthProvider({ children }) {
     const router = useRouter();
     const pathname = usePathname();
 
-    // Helper function to fetch user session and profile
-    const fetchUserAndProfile = async (session) => {
+    // Memoize fetchUserAndProfile to prevent unnecessary recreations
+    const fetchUserAndProfile = useCallback(async (session) => {
         try {
             if (session?.user) {
                 setUser(session.user);
 
-                // Ensure the profile exists or create it
-                const profile = await ensureProfileExists(session.user.id);
-                setProfile(profile);
+                // Only fetch profile if we don't already have it or user changed
+                if (!profile || profile.id !== session.user.id) {
+                    const fetchedProfile = await ensureProfileExists(session.user.id);
+                    setProfile(fetchedProfile);
+                }
             } else {
                 setUser(null);
                 setProfile(null);
-                if (pathname !== "/" && pathname !== "/bac-selection" && pathname !== "/auth/register") {
+
+                // Only redirect if on protected routes
+                const publicRoutes = ["/", "/bac-selection", "/auth/register", "/auth/login"];
+                if (!publicRoutes.includes(pathname)) {
                     router.push('/auth/login');
                 }
             }
@@ -34,10 +39,55 @@ export function AuthProvider({ children }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [profile, pathname, router]);
+
+    // Memoize ensureProfileExists to prevent unnecessary recreations
+    const ensureProfileExists = useCallback(async (userId) => {
+        try {
+            // Check if profile exists
+            const { data: existingProfile, error: fetchError } = await supabase
+                .from('users_profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = "not found"
+                throw fetchError;
+            }
+
+            if (existingProfile) return existingProfile;
+
+            // Create profile if it doesn't exist
+            const { data: userData } = await supabase.auth.getUser();
+            if (!userData.user) throw new Error("User data not found.");
+
+            const metaData = userData.user.user_metadata || {};
+            const fullName = metaData.full_name || 'User';
+            const bacSeries = metaData.bac_series || '';
+
+            const { data: newProfile, error: insertError } = await supabase
+                .from('users_profiles')
+                .insert([{
+                    id: userId,
+                    full_name: fullName,
+                    bac_series: bacSeries,
+                    created_at: new Date().toISOString(),
+                }])
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+
+            return newProfile;
+        } catch (error) {
+            console.error("Error ensuring profile exists:", error.message);
+            throw error;
+        }
+    }, []);
 
     useEffect(() => {
-        let isMounted = true; // Prevent state updates after unmount
+        let isMounted = true;
+        let authSubscription = null;
 
         const initializeAuth = async () => {
             try {
@@ -48,16 +98,14 @@ export function AuthProvider({ children }) {
                 // Listen for auth state changes
                 const { data: { subscription } } = supabase.auth.onAuthStateChange(
                     async (event, session) => {
-                        if (isMounted) {
+                        if (isMounted && (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED')) {
                             setLoading(true);
                             await fetchUserAndProfile(session);
                         }
                     }
                 );
 
-                return () => {
-                    subscription?.unsubscribe();
-                };
+                authSubscription = subscription;
             } catch (error) {
                 console.error("Error initializing auth:", error);
                 if (isMounted) setLoading(false);
@@ -67,9 +115,10 @@ export function AuthProvider({ children }) {
         initializeAuth();
 
         return () => {
-            isMounted = false; // Prevent state updates on unmount
+            isMounted = false;
+            if (authSubscription) authSubscription.unsubscribe();
         };
-    }, [pathname]);
+    }, [fetchUserAndProfile]); // Only depend on fetchUserAndProfile which is memoized
 
     const login = async (email, password) => {
         try {
@@ -139,49 +188,6 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const ensureProfileExists = async (userId) => {
-        try {
-            // Check if profile exists
-            const { data: existingProfile, error: fetchError } = await supabase
-                .from('users_profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
-
-            if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = "not found"
-                throw fetchError;
-            }
-
-            if (existingProfile) return existingProfile;
-
-            // Create profile if it doesn't exist
-            const { data: userData } = await supabase.auth.getUser();
-            if (!userData.user) throw new Error("User data not found.");
-
-            const metaData = userData.user.user_metadata || {};
-            const fullName = metaData.full_name || 'User';
-            const bacSeries = metaData.bac_series || '';
-
-            const { data: newProfile, error: insertError } = await supabase
-                .from('users_profiles')
-                .insert([{
-                    id: userId,
-                    full_name: fullName,
-                    bac_series: bacSeries,
-                    created_at: new Date().toISOString(),
-                }])
-                .select()
-                .single();
-
-            if (insertError) throw insertError;
-
-            return newProfile;
-        } catch (error) {
-            console.error("Error ensuring profile exists:", error.message);
-            throw error;
-        }
-    };
-
     const logout = async () => {
         try {
             setLoading(true);
@@ -189,7 +195,6 @@ export function AuthProvider({ children }) {
             if (error) throw error;
             localStorage.clear();
             router.push('/');
-            router.refresh();
         } catch (error) {
             console.error("Error during logout:", error.message);
         } finally {
