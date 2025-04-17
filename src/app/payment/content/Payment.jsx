@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import {useState, useEffect} from 'react';
+import {useRouter, useSearchParams} from 'next/navigation';
+import {useAuth} from '@/context/AuthContext';
 import supabase from '@/lib/supabase';
-import { notchpay } from '@/lib/notchpay';
+import {notchpay} from '@/lib/notchpay';
 import {
     CreditCard, ShoppingBag, Phone, Clock, Award, ArrowRight,
     ChevronLeft, Loader, CheckCircle, XCircle, AlertTriangle,
@@ -13,89 +13,89 @@ import {
 import Link from 'next/link';
 
 // Composant d'indicateur de statut
-const StatusIndicator = ({ status }) => {
+const StatusIndicator = ({status}) => {
     const getStatusInfo = () => {
         switch (status) {
             case 'pending':
                 return {
-                    icon: <Clock className="w-6 h-6 text-yellow-500" />,
+                    icon: <Clock className="w-6 h-6 text-yellow-500"/>,
                     text: 'En attente',
                     description: 'Transaction initiée, en attente de complétion.',
                     color: 'text-yellow-700 bg-yellow-50 border-yellow-200'
                 };
             case 'processing':
                 return {
-                    icon: <Loader className="w-6 h-6 text-blue-500 animate-spin" />,
+                    icon: <Loader className="w-6 h-6 text-blue-500 animate-spin"/>,
                     text: 'En cours',
                     description: 'Paiement en cours de traitement. Cela peut prendre quelques minutes.',
                     color: 'text-blue-700 bg-blue-50 border-blue-200'
                 };
             case 'complete':
                 return {
-                    icon: <CheckCircle className="w-6 h-6 text-green-500" />,
+                    icon: <CheckCircle className="w-6 h-6 text-green-500"/>,
                     text: 'Réussi',
                     description: 'Paiement complété avec succès!',
                     color: 'text-green-700 bg-green-50 border-green-200'
                 };
             case 'failed':
                 return {
-                    icon: <XCircle className="w-6 h-6 text-red-500" />,
+                    icon: <XCircle className="w-6 h-6 text-red-500"/>,
                     text: 'Échoué',
                     description: 'La transaction a échoué.',
                     color: 'text-red-700 bg-red-50 border-red-200'
                 };
             case 'canceled':
                 return {
-                    icon: <XCircle className="w-6 h-6 text-gray-500" />,
+                    icon: <XCircle className="w-6 h-6 text-gray-500"/>,
                     text: 'Annulé',
                     description: 'La transaction a été annulée.',
                     color: 'text-gray-700 bg-gray-50 border-gray-200'
                 };
             case 'rejected':
                 return {
-                    icon: <AlertTriangle className="w-6 h-6 text-red-500" />,
+                    icon: <AlertTriangle className="w-6 h-6 text-red-500"/>,
                     text: 'Rejeté',
                     description: 'La transaction a été rejetée.',
                     color: 'text-red-700 bg-red-50 border-red-200'
                 };
             case 'abandoned':
                 return {
-                    icon: <XCircle className="w-6 h-6 text-gray-500" />,
+                    icon: <XCircle className="w-6 h-6 text-gray-500"/>,
                     text: 'Abandonné',
                     description: 'La transaction a été abandonnée.',
                     color: 'text-gray-700 bg-gray-50 border-gray-200'
                 };
             case 'expired':
                 return {
-                    icon: <Clock className="w-6 h-6 text-red-500" />,
+                    icon: <Clock className="w-6 h-6 text-red-500"/>,
                     text: 'Expiré',
                     description: 'La transaction a expiré après 3 heures.',
                     color: 'text-red-700 bg-red-50 border-red-200'
                 };
             case 'refunded':
                 return {
-                    icon: <RefreshCw className="w-6 h-6 text-purple-500" />,
+                    icon: <RefreshCw className="w-6 h-6 text-purple-500"/>,
                     text: 'Remboursé',
                     description: 'La transaction a été remboursée.',
                     color: 'text-purple-700 bg-purple-50 border-purple-200'
                 };
             case 'partialy-refunded':
                 return {
-                    icon: <RefreshCw className="w-6 h-6 text-purple-500" />,
+                    icon: <RefreshCw className="w-6 h-6 text-purple-500"/>,
                     text: 'Partiellement remboursé',
                     description: 'La transaction a été partiellement remboursée.',
                     color: 'text-purple-700 bg-purple-50 border-purple-200'
                 };
             case 'incomplete':
                 return {
-                    icon: <AlertTriangle className="w-6 h-6 text-yellow-500" />,
+                    icon: <AlertTriangle className="w-6 h-6 text-yellow-500"/>,
                     text: 'Incomplet',
                     description: 'Montant payé inférieur au montant requis.',
                     color: 'text-yellow-700 bg-yellow-50 border-yellow-200'
                 };
             default:
                 return {
-                    icon: <Clock className="w-6 h-6 text-gray-500" />,
+                    icon: <Clock className="w-6 h-6 text-gray-500"/>,
                     text: 'Inconnu',
                     description: 'Impossible de déterminer le statut.',
                     color: 'text-gray-700 bg-gray-50 border-gray-200'
@@ -117,7 +117,7 @@ const StatusIndicator = ({ status }) => {
 };
 
 // Nouveau composant pour afficher la liste des paiements précédents
-const PaymentHistoryList = ({ payments, onSelect, onClose }) => {
+const PaymentHistoryList = ({payments, onSelect, onClose}) => {
     if (!payments || payments.length === 0) {
         return (
             <div className="text-center py-4">
@@ -161,7 +161,7 @@ const PaymentHistoryList = ({ payments, onSelect, onClose }) => {
             <div className="flex justify-between items-center p-3 border-b">
                 <h3 className="font-medium">Historique des paiements</h3>
                 <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-                    <XCircle size={18} />
+                    <XCircle size={18}/>
                 </button>
             </div>
             <ul className="divide-y divide-gray-200">
@@ -172,7 +172,7 @@ const PaymentHistoryList = ({ payments, onSelect, onClose }) => {
                         onClick={() => onSelect(payment)}
                     >
                         <div className="flex justify-between items-center mb-1">
-                            <span className="font-medium text-sm truncate" style={{ maxWidth: '70%' }}>
+                            <span className="font-medium text-sm truncate" style={{maxWidth: '70%'}}>
                                 {payment.reference}
                             </span>
                             {getStatusBadge(payment.status)}
@@ -195,7 +195,7 @@ export default function PaymentPageContent() {
     const isGlobalAccess = searchParams.get('globalAccess') === 'true';
     const paymentReference = searchParams.get('reference'); // Utilisé pour vérifier un paiement existant
 
-    const { user, loading } = useAuth();
+    const {user, loading} = useAuth();
 
     const [exam, setExam] = useState(null);
     const [loadingData, setLoadingData] = useState(true);
@@ -238,7 +238,7 @@ export default function PaymentPageContent() {
         if (!user) return false;
 
         try {
-            const { data, error } = await supabase
+            const {data, error} = await supabase
                 .from('payments')
                 .select('*')
                 .eq('user_id', user.id)
@@ -268,7 +268,7 @@ export default function PaymentPageContent() {
             // Si on vérifie un paiement existant via l'URL, chercher d'abord ce paiement
             if (paymentReference) {
                 try {
-                    const { data, error } = await supabase
+                    const {data, error} = await supabase
                         .from('payments')
                         .select('*')
                         .eq('reference', paymentReference)
@@ -295,12 +295,12 @@ export default function PaymentPageContent() {
             // Vérifier si l'utilisateur a un paiement en cours (non terminé)
             if (user) {
                 try {
-                    const { data: existingPayments, error: paymentsError } = await supabase
+                    const {data: existingPayments, error: paymentsError} = await supabase
                         .from('payments')
                         .select('*')
                         .eq('user_id', user.id)
                         .in('status', ['pending', 'processing'])
-                        .order('created_at', { ascending: false })
+                        .order('created_at', {ascending: false})
                         .limit(1);
 
                     if (paymentsError) throw paymentsError;
@@ -313,13 +313,17 @@ export default function PaymentPageContent() {
                         const updatedStatus = await checkPaymentStatus(latestPayment.reference);
                         const currentStatus = updatedStatus?.status || latestPayment.status;
 
-                        setPaymentData(latestPayment);
-                        setPaymentStatus(currentStatus);
-                        setIsCheckingStatus(true);
-                        setCurrentReference(latestPayment.reference);
-                        setDisplayMode('status');
-                        setLoadingData(false);
-                        return;
+                        if (hasComplete) {
+                            setHasCompletePayment(true);
+                        } else {
+                            setPaymentData(latestPayment);
+                            setPaymentStatus(currentStatus);
+                            setIsCheckingStatus(true);
+                            setCurrentReference(latestPayment.reference);
+                            setDisplayMode('status');
+                            setLoadingData(false);
+                            return;
+                        }
                     }
                 } catch (error) {
                     console.error('Error checking existing payments:', error.message);
@@ -340,7 +344,7 @@ export default function PaymentPageContent() {
             }
 
             try {
-                const { data, error } = await supabase
+                const {data, error} = await supabase
                     .from('exams')
                     .select('*, subject:subject_id(name, code)')
                     .eq('id', examId)
@@ -367,11 +371,11 @@ export default function PaymentPageContent() {
         setLoadingHistory(true);
 
         try {
-            const { data, error } = await supabase
+            const {data, error} = await supabase
                 .from('payments')
                 .select('*')
                 .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
+                .order('created_at', {ascending: false})
                 .limit(20);
 
             if (error) throw error;
@@ -419,7 +423,7 @@ export default function PaymentPageContent() {
 
                 setPaymentData(paymentInfo);
                 setCurrentReference(reference);
-                return { status: newStatus, payment: paymentInfo };
+                return {status: newStatus, payment: paymentInfo};
             } else {
                 throw new Error(data.message || 'Erreur lors de la vérification du paiement');
             }
@@ -441,12 +445,12 @@ export default function PaymentPageContent() {
 
         try {
             // Récupérer tous les paiements en attente/en cours
-            const { data: pendingPayments, error } = await supabase
+            const {data: pendingPayments, error} = await supabase
                 .from('payments')
                 .select('*')
                 .eq('user_id', user.id)
                 .in('status', ['pending', 'processing'])
-                .order('created_at', { ascending: false });
+                .order('created_at', {ascending: false});
 
             if (error) throw error;
 
@@ -521,9 +525,9 @@ export default function PaymentPageContent() {
         if (!reference) return;
 
         try {
-            const { error } = await supabase
+            const {error} = await supabase
                 .from('payments')
-                .update({ status: status })
+                .update({status: status})
                 .eq('reference', reference);
 
             if (error) throw error;
@@ -613,7 +617,11 @@ export default function PaymentPageContent() {
             };
 
             // Initialize payment
-            const { initResponse, chargeResponse, error: paymentError } = await notchpay.initiateDirectCharge(paymentParams);
+            const {
+                initResponse,
+                chargeResponse,
+                error: paymentError
+            } = await notchpay.initiateDirectCharge(paymentParams);
 
             if (paymentError) {
                 // If direct charge failed, but init succeeded, we have a checkout URL
@@ -651,7 +659,7 @@ export default function PaymentPageContent() {
     // Create a payment record in the database
     const createPaymentRecord = async (examId, reference, status, amount) => {
         try {
-            const { data, error } = await supabase
+            const {data, error} = await supabase
                 .from('payments')
                 .insert([{
                     user_id: user.id,
@@ -703,7 +711,7 @@ export default function PaymentPageContent() {
     if (loading || loadingData) {
         return (
             <div className="bg-white h-screen pt-4 pb-20 flex flex-col justify-center items-center">
-                <Loader className="w-10 h-10 text-green-600 animate-spin" />
+                <Loader className="w-10 h-10 text-green-600 animate-spin"/>
                 <p className="mt-4 text-gray-600 text-sm">Chargement...</p>
             </div>
         );
@@ -714,7 +722,7 @@ export default function PaymentPageContent() {
             <div className="bg-white h-screen pt-4 pb-20">
                 <div className="px-4 py-8">
                     <div className="text-red-600 mb-6 text-center">
-                        <AlertTriangle className="h-12 w-12 mx-auto mb-2" />
+                        <AlertTriangle className="h-12 w-12 mx-auto mb-2"/>
                         <p className="text-lg font-medium">Examen non trouvé ou inaccessible.</p>
                     </div>
                     <div className="flex justify-center">
@@ -722,7 +730,7 @@ export default function PaymentPageContent() {
                             onClick={() => router.push('/exams')}
                             className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md flex items-center"
                         >
-                            <ChevronLeft className="mr-1" size={18} />
+                            <ChevronLeft className="mr-1" size={18}/>
                             Retour aux examens
                         </button>
                     </div>
@@ -739,7 +747,7 @@ export default function PaymentPageContent() {
                     {/* Petite icône en haut */}
                     <div className="mb-6 text-center">
                         <div className="rounded-full bg-green-100 w-16 h-16 mx-auto flex items-center justify-center">
-                            <CreditCard className="w-8 h-8 text-green-600" />
+                            <CreditCard className="w-8 h-8 text-green-600"/>
                         </div>
                     </div>
 
@@ -755,14 +763,14 @@ export default function PaymentPageContent() {
                         className="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg text-center flex items-center justify-center"
                     >
                         Continuer vers le paiement
-                        <ArrowRight className="ml-2" size={18} />
+                        <ArrowRight className="ml-2" size={18}/>
                     </a>
 
                     <button
                         onClick={() => router.push('/exams')}
                         className="mt-6 text-green-600 hover:text-green-800 flex items-center justify-center mx-auto"
                     >
-                        <ChevronLeft className="mr-1" size={18} />
+                        <ChevronLeft className="mr-1" size={18}/>
                         Annuler et retourner aux examens
                     </button>
                 </div>
@@ -784,7 +792,7 @@ export default function PaymentPageContent() {
                             className="w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
                         >
                             Accéder aux examens
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                            <ArrowRight className="ml-2 h-4 w-4"/>
                         </Link>
                     )}
 
@@ -794,7 +802,7 @@ export default function PaymentPageContent() {
                             onClick={startNewPayment}
                             className="w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
                         >
-                            <PlusCircle className="mr-2 h-4 w-4" />
+                            <PlusCircle className="mr-2 h-4 w-4"/>
                             {isTerminalStatus ? 'Réessayer le paiement' : 'Nouveau paiement'}
                         </button>
                     )}
@@ -803,7 +811,7 @@ export default function PaymentPageContent() {
                         href="/exams"
                         className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                     >
-                        <Home className="mr-2 h-4 w-4" />
+                        <Home className="mr-2 h-4 w-4"/>
                         Retour aux examens
                     </Link>
                 </div>
@@ -816,7 +824,7 @@ export default function PaymentPageContent() {
                     {/* Petite icône en haut */}
                     <div className="mb-4 text-center">
                         <div className="rounded-full bg-green-100 w-16 h-16 mx-auto flex items-center justify-center">
-                            <CreditCard className="w-8 h-8 text-green-600" />
+                            <CreditCard className="w-8 h-8 text-green-600"/>
                         </div>
                     </div>
 
@@ -827,7 +835,7 @@ export default function PaymentPageContent() {
                     </p>
 
                     {/* Indicateur de statut */}
-                    <StatusIndicator status={paymentStatus} />
+                    <StatusIndicator status={paymentStatus}/>
 
                     {/* Détails du paiement */}
                     {paymentData && (
@@ -874,9 +882,9 @@ export default function PaymentPageContent() {
                             className="flex-1 flex items-center justify-center py-2 px-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                         >
                             {loadingHistory ? (
-                                <Loader className="mr-1 h-4 w-4 animate-spin" />
+                                <Loader className="mr-1 h-4 w-4 animate-spin"/>
                             ) : (
-                                <List className="mr-1 h-4 w-4" />
+                                <List className="mr-1 h-4 w-4"/>
                             )}
                             Voir mes paiements
                         </button>
@@ -887,9 +895,9 @@ export default function PaymentPageContent() {
                             className="flex-1 flex items-center justify-center py-2 px-2 border border-green-300 rounded-lg text-green-700 bg-green-50 hover:bg-green-100"
                         >
                             {isCheckingStatus ? (
-                                <Loader className="mr-1 h-4 w-4 animate-spin" />
+                                <Loader className="mr-1 h-4 w-4 animate-spin"/>
                             ) : (
-                                <RefreshCw className="mr-1 h-4 w-4" />
+                                <RefreshCw className="mr-1 h-4 w-4"/>
                             )}
                             Actualiser
                         </button>
@@ -919,9 +927,9 @@ export default function PaymentPageContent() {
                 <div className="mb-4 text-center">
                     <div className="rounded-full bg-green-100 w-16 h-16 mx-auto flex items-center justify-center">
                         {isGlobalAccess ? (
-                            <Award className="w-8 h-8 text-green-600" />
+                            <Award className="w-8 h-8 text-green-600"/>
                         ) : (
-                            <ShoppingBag className="w-8 h-8 text-green-600" />
+                            <ShoppingBag className="w-8 h-8 text-green-600"/>
                         )}
                     </div>
                 </div>
@@ -941,7 +949,7 @@ export default function PaymentPageContent() {
                     {isGlobalAccess ? (
                         <div className="bg-green-50 rounded-lg p-3 mb-4 border border-green-100">
                             <h3 className="text-base font-semibold mb-1 text-green-800 flex items-center">
-                                <Award className="mr-2" size={16} />
+                                <Award className="mr-2" size={16}/>
                                 Accès à tous les examens
                             </h3>
                             <p className="text-sm text-gray-600 mb-2">
@@ -958,14 +966,17 @@ export default function PaymentPageContent() {
                                 {exam.title}
                             </h3>
                             <div className="flex items-center text-gray-600 mb-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none"
+                                     viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
                                 <span className="text-sm">{exam.subject?.name || "Sujet non disponible"}</span>
                             </div>
                             <div className="flex items-center text-gray-600 mb-2">
-                                <Clock className="h-4 w-4 mr-1" />
-                                <span className="text-sm">Durée: {exam.duration.split(':')[0]}h{exam.duration.split(':')[1]}m</span>
+                                <Clock className="h-4 w-4 mr-1"/>
+                                <span
+                                    className="text-sm">Durée: {exam.duration.split(':')[0]}h{exam.duration.split(':')[1]}m</span>
                             </div>
                             <div className="flex items-center justify-between text-green-700 font-medium">
                                 <span>Prix:</span>
@@ -999,7 +1010,7 @@ export default function PaymentPageContent() {
                                     className="flex items-center justify-center py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
                                 >
                                     Accéder aux examens
-                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                    <ArrowRight className="ml-2 h-4 w-4"/>
                                 </Link>
                             </div>
                         </div>
@@ -1014,8 +1025,9 @@ export default function PaymentPageContent() {
                                 Numéro de téléphone (Mobile Money)
                             </label>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                    <Phone size={16} />
+                                <div
+                                    className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                    <Phone size={16}/>
                                 </div>
                                 <input
                                     type="tel"
@@ -1043,13 +1055,13 @@ export default function PaymentPageContent() {
                         >
                             {processingPayment ? (
                                 <>
-                                    <Loader className="w-5 h-5 animate-spin mr-2" />
+                                    <Loader className="w-5 h-5 animate-spin mr-2"/>
                                     Traitement en cours...
                                 </>
                             ) : (
                                 <>
                                     Payer maintenant
-                                    <CreditCard className="ml-2" size={16} />
+                                    <CreditCard className="ml-2" size={16}/>
                                 </>
                             )}
                         </button>
@@ -1066,12 +1078,12 @@ export default function PaymentPageContent() {
                         >
                             {loadingHistory ? (
                                 <>
-                                    <Loader className="mr-1 h-4 w-4 animate-spin" />
+                                    <Loader className="mr-1 h-4 w-4 animate-spin"/>
                                     Chargement...
                                 </>
                             ) : (
                                 <>
-                                    <List className="mr-1" size={16} />
+                                    <List className="mr-1" size={16}/>
                                     Mes paiements
                                 </>
                             )}
@@ -1084,12 +1096,12 @@ export default function PaymentPageContent() {
                         >
                             {isCheckingStatus ? (
                                 <>
-                                    <Loader className="mr-1 h-4 w-4 animate-spin" />
+                                    <Loader className="mr-1 h-4 w-4 animate-spin"/>
                                     Vérification...
                                 </>
                             ) : (
                                 <>
-                                    <RefreshCw className="mr-1" size={16} />
+                                    <RefreshCw className="mr-1" size={16}/>
                                     Actualiser
                                 </>
                             )}
@@ -1112,7 +1124,7 @@ export default function PaymentPageContent() {
                         href="/exams"
                         className="text-green-600 hover:text-green-800 flex items-center justify-center"
                     >
-                        <ChevronLeft className="mr-1" size={16} />
+                        <ChevronLeft className="mr-1" size={16}/>
                         Retour aux examens
                     </Link>
 
