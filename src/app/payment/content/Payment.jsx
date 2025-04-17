@@ -27,7 +27,7 @@ const StatusIndicator = ({ status }) => {
                 return {
                     icon: <Loader className="w-6 h-6 text-blue-500 animate-spin" />,
                     text: 'En cours',
-                    description: 'Paiement en cours de traitement.',
+                    description: 'Paiement en cours de traitement. Cela peut prendre quelques minutes.',
                     color: 'text-blue-700 bg-blue-50 border-blue-200'
                 };
             case 'complete':
