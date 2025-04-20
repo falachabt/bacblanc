@@ -120,74 +120,77 @@ export function AuthProvider({ children }) {
         };
     }, [fetchUserAndProfile]); // Only depend on fetchUserAndProfile which is memoized
 
-    const login = async (email, password) => {
+    const register = async (identifier, password, fullName, bacSeries, identifierType = 'email') => {
         try {
-            setLoading(true);
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) throw error;
-            return { user: data.user, error: null };
-        } catch (error) {
-            console.error("Error during login:", error.message);
-            return { user: null, error };
-        } finally {
-            setLoading(false);
-        }
-    };
+            // Préparation des données utilisateur
+            const userData = {
+                full_name: fullName,
+                bac_series: bacSeries,
+            };
 
-    const register = async (email, password, fullName, bacSeries) => {
-        try {
-            setLoading(true);
+            // Déterminer si on utilise email ou téléphone pour l'authentification
+            let authData = {};
+            if (identifierType === 'email') {
+                authData = { email: identifier };
+            } else if (identifierType === 'phone') {
+                authData = { phone: identifier };
+            }
 
-            // Register the user
-            const { data, error: registerError } = await supabase.auth.signUp({
-                email,
+            // Inscription de l'utilisateur
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                ...authData,
                 password,
                 options: {
-                    data: {
-                        full_name: fullName,
-                        bac_series: bacSeries,
-                    },
-                },
+                    data: userData
+                }
             });
 
-            if (registerError) throw registerError;
+            if (signUpError) throw signUpError;
 
-            if (!data.user) {
-                throw new Error("Registration failed, no user created.");
+            // Si l'inscription réussit, mettre à jour l'état
+            if (signUpData.user) {
+                setUser(signUpData.user);
+                return { user: signUpData.user, error: null };
             }
 
-            // Create user profile
-            const { error: profileError } = await supabase
-                .from('users_profiles')
-                .insert([{
-                    id: data.user.id,
-                    full_name: fullName,
-                    bac_series: bacSeries,
-                    created_at: new Date().toISOString(),
-                }]);
-
-            if (profileError) {
-                console.error("Error creating user profile:", profileError);
-
-                // Cleanup: Delete the user if profile creation fails
-                try {
-                    await supabase.auth.admin.deleteUser(data.user.id);
-                } catch (cleanupError) {
-                    console.error("Failed to delete user after profile creation error:", cleanupError);
-                }
-
-                throw profileError;
-            }
-
-            return { user: data.user, error: null };
+            return { user: null, error: new Error('Échec de l\'inscription.') };
         } catch (error) {
-            console.error("Error during registration:", error.message);
+            console.error('Erreur d\'inscription:', error.message);
             return { user: null, error };
-        } finally {
-            setLoading(false);
         }
     };
 
+
+    const login = async (identifier, password, identifierType = 'email') => {
+        try {
+            // Déterminer si on utilise email ou téléphone pour l'authentification
+            let authData = {};
+            if (identifierType === 'email') {
+                authData = { email: identifier };
+            } else if (identifierType === 'phone') {
+                authData = { phone: identifier };
+            }
+
+            // Connexion de l'utilisateur
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                ...authData,
+                password
+            });
+
+            if (signInError) throw signInError;
+
+            // Si la connexion réussit, mettre à jour l'état
+            if (signInData.user) {
+                setUser(signInData.user);
+                return { user: signInData.user, error: null };
+            }
+
+            return { user: null, error: new Error('Échec de la connexion.') };
+        } catch (error) {
+            console.error('Erreur de connexion:', error.message);
+            return { user: null, error };
+        }
+    };
     const logout = async () => {
         try {
             setLoading(true);
