@@ -11,6 +11,7 @@ import {
     RefreshCw, Home, List, ChevronDown, ChevronUp, PlusCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import PaymentGuideModal from "@/app/payment/content/PaymentGuideModall";
 
 // Composant d'indicateur de statut
 const StatusIndicator = ({status}) => {
@@ -223,8 +224,34 @@ export default function PaymentPageContent() {
     // État pour suivre si l'utilisateur a déjà un paiement complet
     const [hasCompletePayment, setHasCompletePayment] = useState(false);
 
+    // NOUVEAU: État pour le guide de paiement
+    const [showPaymentGuide, setShowPaymentGuide] = useState(false);
+
     // Prix fixe pour l'accès global
     const GLOBAL_ACCESS_PRICE = 200;
+
+    // NOUVEAU: Effet pour le guide de paiement
+    useEffect(() => {
+        // Vérifier si l'utilisateur a déjà vu le guide
+        const hasSeenGuide = localStorage.getItem('hasSeenPaymentGuide');
+
+        // Si première visite, afficher le guide
+        if (!hasSeenGuide && !loading && !loadingData) {
+            setShowPaymentGuide(true);
+        }
+    }, [loading, loadingData]);
+
+    // NOUVEAU: Fonction pour gérer la fermeture du guide
+    const handleCloseGuide = () => {
+        localStorage.setItem('hasSeenPaymentGuide', 'true');
+        setShowPaymentGuide(false);
+    };
+
+    // NOUVEAU: Fonction pour réinitialiser le guide (pour les tests)
+    const resetGuide = () => {
+        localStorage.removeItem('hasSeenPaymentGuide');
+        setShowPaymentGuide(true);
+    };
 
     // Redirection si non connecté
     useEffect(() => {
@@ -915,6 +942,19 @@ export default function PaymentPageContent() {
                     {/* Actions disponibles */}
                     {renderStatusActions()}
                 </div>
+
+                {/* NOUVEAU: Bouton pour afficher le guide (pour les tests) */}
+                <div className="mt-4 text-center">
+                    <button
+                        onClick={resetGuide}
+                        className="text-xs text-gray-400 hover:text-gray-600"
+                    >
+                        Afficher le guide de paiement
+                    </button>
+                </div>
+
+                {/* NOUVEAU: Affichage du guide de paiement */}
+                {showPaymentGuide && <PaymentGuideModal onClose={handleCloseGuide} />}
             </div>
         );
     }
@@ -950,7 +990,7 @@ export default function PaymentPageContent() {
                         <div className="bg-green-50 rounded-lg p-3 mb-4 border border-green-100">
                             <h3 className="text-base font-semibold mb-1 text-green-800 flex items-center">
                                 <Award className="mr-2" size={16}/>
-                                Accès à tous les examens
+                                Payer l'accès à tous les examens
                             </h3>
                             <p className="text-sm text-gray-600 mb-2">
                                 Débloquez l'accès à tous les examens disponibles pour votre série BAC.
@@ -1132,8 +1172,19 @@ export default function PaymentPageContent() {
                     <p className="text-xs text-gray-500 mt-4">
                         Note: Vous pouvez consulter l'historique de vos paiements à tout moment.
                     </p>
+
+                    {/* NOUVEAU: Bouton pour afficher le guide (pour les tests) */}
+                    <button
+                        onClick={resetGuide}
+                        className="mt-2 text-xs text-gray-400 hover:text-gray-600"
+                    >
+                        Afficher le guide de paiement
+                    </button>
                 </div>
             </div>
+
+            {/* NOUVEAU: Affichage du guide de paiement */}
+            {showPaymentGuide && <PaymentGuideModal onClose={handleCloseGuide} />}
         </div>
     );
 }

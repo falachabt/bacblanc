@@ -8,7 +8,7 @@ import supabase from "@/lib/supabase";
 import {
     BookOpen, Clock, Award, ChevronRight, Lock, Calendar, AlertCircle,
     RefreshCw, Check, Unlock, CreditCard, Loader, ShieldCheck, Home,
-    ArrowLeft, FileText, Settings, BookX, Info
+    ArrowLeft, FileText, Settings, BookX, Info, X
 } from 'lucide-react';
 
 // Composant pour les cartes d'examen
@@ -323,25 +323,25 @@ export default function ExamsPage() {
                 {/* Bannière d'accès premium ou message d'accès actif */}
                 {!hasAccessToAllExams && !noSubjectsForBacSeries && exams.length > 0 ? (
                     <div className="mb-4">
-                        <div className="border border-green-200 rounded-lg bg-green-50 overflow-hidden">
+                        <div className="border border-orange-200 rounded-lg bg-orange-50 overflow-hidden">
                             <div className="p-3 flex items-center justify-between">
                                 <div className="flex items-center">
-                                    <div className="rounded-full bg-green-100 p-1.5 mr-2 text-green-600">
+                                    <div className="rounded-full bg-orange-100 p-1.5 mr-2 text-orange-600">
                                         <Award size={16} />
                                     </div>
                                     <div>
-                                        <h2 className="font-medium text-green-800 text-sm">Accès Premium</h2>
+                                        <h2 className="font-medium text-orange-800 text-sm">Débloquer l'accès </h2>
                                         <div className="flex items-center space-x-3 mt-1">
-                                            <div className="flex items-center text-xs text-green-700">
-                                                <Check size={12} className="mr-1" /> Tous les examens
+                                            <div className="flex items-center text-xs text-orange-700">
+                                      <X size={12} className="mr-1" /> Tous les examens
                                             </div>
-                                            <div className="text-sm font-medium text-green-700">{GLOBAL_ACCESS_PRICE} FCFA</div>
+                                            <div className="text-sm font-medium text-orange-700">{GLOBAL_ACCESS_PRICE} FCFA</div>
                                         </div>
                                     </div>
                                 </div>
                                 <button
                                     onClick={handleGlobalPayment}
-                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-medium shadow-sm transition-colors flex items-center"
+                                    className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-md text-xs font-medium shadow-sm transition-colors flex items-center"
                                 >
                                     <Unlock size={14} className="mr-1" />
                                     Débloquer
