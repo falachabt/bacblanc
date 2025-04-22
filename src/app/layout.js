@@ -2,12 +2,13 @@
 // 'use client';
 "use client";
 import './globals.scss';
-import { AuthProvider } from '@/context/AuthContext';
-import { usePathname } from 'next/navigation';
+import {AuthProvider} from '@/context/AuthContext';
+import {usePathname} from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import {ExamProvider} from "@/context/ExamContext";
 
-export default function RootLayout({ children }) {
+export default function RootLayout({children}) {
     const pathname = usePathname();
 
     // Pages où on ne veut pas afficher le Navbar et Footer
@@ -18,11 +19,14 @@ export default function RootLayout({ children }) {
         <html lang="fr">
         <body className="flex flex-col min-h-screen">
         <AuthProvider>
-            {showLayout && <Navbar />}
-            <main className="flex-grow">
-                {children}
-            </main>
-            {showLayout && <Footer />}
+            <ExamProvider>
+
+                {showLayout && <Navbar/>}
+                <main className="flex-grow">
+                    {children}
+                </main>
+                {showLayout && <Footer/>}
+            </ExamProvider>
         </AuthProvider>
         </body>
         </html>

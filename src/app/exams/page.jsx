@@ -25,7 +25,8 @@ const ExamCard = ({ exam, hasAccess }) => {
     };
 
     // Détermine si l'examen est disponible (date de disponibilité passée)
-    const isAvailable = new Date(exam.available_at) <= new Date();
+    // const isAvailable = new Date(exam.available_at) <= new Date();
+    const isAvailable = true;
 
     return (
         <div
