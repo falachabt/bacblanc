@@ -248,8 +248,11 @@ export default function ExamQuiz({ exam, onBack }) {
     const calculateResults = () => {
         const results = completeExam(exam.id, answers);
         setExamResult(results);
+        console.log("Résultats de l'examen:", results);
         setShowResults(true);
+        router.push("/exam-result/" + exam.id);
         return results;
+
     };
 
     // Terminer l'examen

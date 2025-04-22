@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import {useParams, useRouter} from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useExam } from '@/context/ExamContext';
 import Link from 'next/link';
@@ -11,10 +11,11 @@ import {
 } from 'lucide-react';
 import ExamQuiz from '@/components/exam/ExamQuiz';
 
-export default function ExamDetailPage({ params }) {
+export default function ExamDetailPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const {
+        loading: examLoading,
         getExamById,
         startExam,
         isExamInProgress,
@@ -28,7 +29,7 @@ export default function ExamDetailPage({ params }) {
     const [quizStarted, setQuizStarted] = useState(false);
     const [examCompleted, setExamCompleted] = useState(false);
     const [lastScore, setLastScore] = useState(null);
-
+    const params = useParams();
     const examId = params.id;
 
     // Redirection si non connecté
@@ -42,9 +43,18 @@ export default function ExamDetailPage({ params }) {
     useEffect(() => {
         if (!examId) return;
 
+        // Attendre que examLoading soit terminé avant de charger l'examen
+        if (examLoading) {
+            setLoading(true);
+            return;
+        }
+
         const loadExam = async () => {
             setLoading(true);
             try {
+                // Ajouter un petit délai pour s'assurer que les examens sont chargés
+                await new Promise(resolve => setTimeout(resolve, 300));
+
                 const examData = getExamById(examId);
                 if (!examData) {
                     setError("Examen non trouvé");
@@ -78,10 +88,16 @@ export default function ExamDetailPage({ params }) {
         };
 
         loadExam();
-    }, [examId, getExamById, isExamCompleted, isExamInProgress, getExistingResult]);
+    }, [examId, getExamById, isExamCompleted, isExamInProgress, getExistingResult, examLoading]);
 
     // Démarrer un examen
     const handleStartExam = () => {
+        // Vérifier que les examens sont bien chargés
+        if (examLoading) {
+            setError("Veuillez patienter, les examens sont en cours de chargement");
+            return;
+        }
+
         const { exam: startedExam, error: startError, completed } = startExam(examId);
 
         if (startError) {
@@ -102,7 +118,8 @@ export default function ExamDetailPage({ params }) {
         setQuizStarted(false);
     };
 
-    if (authLoading || loading) {
+    // Affichage pendant le chargement des données
+    if (authLoading || loading || examLoading) {
         return (
             <div className="flex justify-center items-center min-h-screen bg-white">
                 <div className="text-center p-4">
@@ -286,7 +303,7 @@ export default function ExamDetailPage({ params }) {
 
                         <h3 className="text-md font-semibold mb-2">Structure de l'examen:</h3>
                         <ul className="list-disc pl-5 mb-4 text-gray-700">
-                            <li>Nombre de questions: {exam.questionCount || "Variable"}</li>
+                            <li>Nombre de questions: {exam.questionCount || exam.questions?.length || "Variable"}</li>
                             <li>Types de questions: QCM, questions à réponse courte, etc.</li>
                             <li>Temps alloué: {exam.duration}</li>
                         </ul>
@@ -319,8 +336,9 @@ export default function ExamDetailPage({ params }) {
                         <button
                             onClick={handleStartExam}
                             className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none"
+                            disabled={examLoading}
                         >
-                            Commencer l'examen
+                            {examLoading ? 'Chargement...' : 'Commencer l\'examen'}
                             <ChevronRight className="ml-1 h-5 w-5" />
                         </button>
 

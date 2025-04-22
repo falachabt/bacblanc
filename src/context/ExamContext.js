@@ -16,13 +16,14 @@ import {
 const ExamContext = createContext(null);
 
 export function ExamProvider({ children }) {
-    const [exams, setExams] = useState(initMockExamsData());
+    // Initialiser avec un tableau vide au lieu de undefined
+    const [exams, setExams] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [currentExam, setCurrentExam] = useState(null);
     const [randomizedQuestions, setRandomizedQuestions] = useState({});
 
-    // Initialize exams data from local storage
+    // Un seul useEffect pour initialiser les données
     useEffect(() => {
         const loadExams = async () => {
             setLoading(true);
@@ -38,6 +39,8 @@ export function ExamProvider({ children }) {
                     console.log("Initialisation des données d'examens");
                     const mockExams = initMockExamsData();
                     setExams(mockExams);
+                    // Sauvegarder les données dans le localStorage pour la prochaine fois
+                    localStorage.setItem('exams_data', JSON.stringify(mockExams));
                 } else {
                     console.log("Chargement des examens existants");
                     setExams(JSON.parse(examData));
@@ -45,6 +48,9 @@ export function ExamProvider({ children }) {
             } catch (err) {
                 console.error('Error loading exams:', err);
                 setError('Impossible de charger les examens. Veuillez rafraîchir la page.');
+                // En cas d'erreur, essayer de charger les données mockées
+                const mockExams = initMockExamsData();
+                setExams(mockExams);
             } finally {
                 setLoading(false);
             }
@@ -55,12 +61,25 @@ export function ExamProvider({ children }) {
 
     // Get exam by ID
     const getExamById = (examId) => {
+        // Si les examens sont en cours de chargement, renvoyer null
+        if (loading) {
+            console.log("Les examens sont en cours de chargement");
+            return null;
+        }
+
         // Trouver l'examen de base
-        const baseExam = exams.find(exam => exam.id === examId);
+        let baseExam = exams.find(exam => exam.id === examId);
 
         if (!baseExam) {
-            console.error(`Exam with ID ${examId} not found`);
-            return null;
+            // Si l'examen n'est pas trouvé dans les examens chargés,
+            // essayer de le trouver dans les données mockées
+            let tempExam = initMockExamsData().find(exam => exam.id === examId);
+            if (tempExam) {
+                baseExam = tempExam;
+            } else {
+                console.error(`Exam with ID ${examId} not found`);
+                return null;
+            }
         }
 
         // Si nous avons déjà des questions randomisées pour cet examen, les utiliser
