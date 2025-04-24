@@ -266,13 +266,13 @@ export default function ExamDetailPage() {
                         Retour aux examens
                     </Link>
 
-                    <Link
-                        href="/dashboard"
-                        className="flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none"
-                    >
-                        <CheckCircle className="mr-2 h-5 w-5"/>
-                        Voir tous mes résultats
-                    </Link>
+                    {/*<Link*/}
+                    {/*    href="/dashboard"*/}
+                    {/*    className="flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none"*/}
+                    {/*>*/}
+                    {/*    <CheckCircle className="mr-2 h-5 w-5"/>*/}
+                    {/*    Voir tous mes résultats*/}
+                    {/*</Link>*/}
                 </div>
                 <ExamResult/>
             </div>
