@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import {useParams, useRouter} from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { useExam } from '@/context/ExamContext';
+import {useAuth} from '@/context/AuthContext';
+import {useExam} from '@/context/ExamContext';
 import Link from 'next/link';
 import {
     Clock, AlertCircle, ArrowLeft, BookOpen,
     CheckCircle, Book, Award, ChevronRight, AlertTriangle
 } from 'lucide-react';
 import ExamQuiz from '@/components/exam/ExamQuiz';
+import ExamResult from "@/components/exam/ExamResult";
 
 export default function ExamDetailPage() {
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
+    const {user, loading: authLoading} = useAuth();
     const {
         loading: examLoading,
         getExamById,
@@ -55,7 +56,8 @@ export default function ExamDetailPage() {
                 // Ajouter un petit délai pour s'assurer que les examens sont chargés
                 await new Promise(resolve => setTimeout(resolve, 300));
 
-                const examData = getExamById(examId);
+                const examData = await getExamById(examId);
+
                 if (!examData) {
                     setError("Examen non trouvé");
                     setLoading(false);
@@ -64,17 +66,22 @@ export default function ExamDetailPage() {
 
                 setExam(examData);
 
+
                 // Vérifier si l'examen est déjà terminé
-                const completed = isExamCompleted(examId);
+                const completed = await isExamCompleted(examId);
+
+                console.log("Exam completed status:", completed);
+
+
                 setExamCompleted(completed);
 
                 if (completed) {
                     // Récupérer le résultat de l'examen
-                    const result = getExistingResult(examId);
+                    const result = await getExistingResult(examId);
                     if (result) {
                         setLastScore(result);
                     }
-                } else if (isExamInProgress(examId)) {
+                } else if (await isExamInProgress(examId)) {
                     // Si l'examen est en cours, on démarre directement le quiz
                     setQuizStarted(true);
                 }
@@ -91,14 +98,15 @@ export default function ExamDetailPage() {
     }, [examId, getExamById, isExamCompleted, isExamInProgress, getExistingResult, examLoading]);
 
     // Démarrer un examen
-    const handleStartExam = () => {
+    const handleStartExam = async () => {
         // Vérifier que les examens sont bien chargés
         if (examLoading) {
             setError("Veuillez patienter, les examens sont en cours de chargement");
             return;
         }
 
-        const { exam: startedExam, error: startError, completed } = startExam(examId);
+
+        const {exam: startedExam, error: startError, completed} = await startExam(examId);
 
         if (startError) {
             setError(startError);
@@ -123,7 +131,8 @@ export default function ExamDetailPage() {
         return (
             <div className="flex justify-center items-center min-h-screen bg-white">
                 <div className="text-center p-4">
-                    <div className="w-16 h-16 border-t-4 border-green-600 border-solid rounded-full animate-spin mx-auto"></div>
+                    <div
+                        className="w-16 h-16 border-t-4 border-green-600 border-solid rounded-full animate-spin mx-auto"></div>
                     <p className="mt-4 text-gray-600 font-medium">Chargement de l'examen...</p>
                 </div>
             </div>
@@ -135,7 +144,7 @@ export default function ExamDetailPage() {
             <div className="container mx-auto px-4 py-8">
                 <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-6">
                     <div className="flex">
-                        <AlertCircle className="h-6 w-6 text-red-400 mr-3" />
+                        <AlertCircle className="h-6 w-6 text-red-400 mr-3"/>
                         <div>
                             <p className="text-red-700">{error}</p>
                             <p className="text-red-700 mt-1">
@@ -145,7 +154,7 @@ export default function ExamDetailPage() {
                     </div>
                 </div>
                 <Link href="/exams" className="inline-flex items-center text-green-600 hover:text-green-800">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    <ArrowLeft className="h-4 w-4 mr-1"/>
                     Retour aux examens
                 </Link>
             </div>
@@ -157,12 +166,12 @@ export default function ExamDetailPage() {
             <div className="container mx-auto px-4 py-8">
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-6">
                     <div className="flex">
-                        <AlertCircle className="h-6 w-6 text-yellow-400 mr-3" />
+                        <AlertCircle className="h-6 w-6 text-yellow-400 mr-3"/>
                         <p className="text-yellow-700">Examen non trouvé.</p>
                     </div>
                 </div>
                 <Link href="/exams" className="inline-flex items-center text-green-600 hover:text-green-800">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    <ArrowLeft className="h-4 w-4 mr-1"/>
                     Retour aux examens
                 </Link>
             </div>
@@ -185,7 +194,7 @@ export default function ExamDetailPage() {
             <div className="container mx-auto px-4 py-8 max-w-4xl">
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-6">
                     <div className="flex">
-                        <AlertTriangle className="h-6 w-6 text-yellow-400 mr-3 flex-shrink-0" />
+                        <AlertTriangle className="h-6 w-6 text-yellow-400 mr-3 flex-shrink-0"/>
                         <div>
                             <p className="text-yellow-700 font-medium">Examen déjà complété</p>
                             <p className="text-yellow-700 mt-1">
@@ -194,10 +203,12 @@ export default function ExamDetailPage() {
                             {lastScore && (
                                 <div className="mt-2">
                                     <p className="text-yellow-700">
-                                        <span className="font-medium">Votre résultat :</span> {lastScore.score}/{lastScore.total} points ({Math.round((lastScore.score / lastScore.total) * 100)}%)
+                                        <span
+                                            className="font-medium">Votre résultat :</span> {lastScore.score}/{exam?.questions?.reduce((sum, a) => sum + a.points, 0)} points ({Math.round((lastScore.score / exam?.questions?.reduce((sum, a) => sum + a.points, 0)) * 100)}%)
                                     </p>
                                     <p className="text-yellow-700">
-                                        <span className="font-medium">Date :</span> {new Date(lastScore.date).toLocaleDateString()} à {new Date(lastScore.date).toLocaleTimeString()}
+                                        <span
+                                            className="font-medium">Date :</span> {new Date(lastScore.started_at).toLocaleTimeString()} à {new Date(lastScore.completed_at).toLocaleTimeString()}
                                     </p>
                                 </div>
                             )}
@@ -210,24 +221,35 @@ export default function ExamDetailPage() {
                         <div>
                             <h1 className="text-2xl font-bold text-gray-800 mb-2">{exam.title}</h1>
                             <div className="flex items-center mb-1 text-gray-600">
-                                <BookOpen className="h-4 w-4 mr-2" />
+                                <BookOpen className="h-4 w-4 mr-2"/>
                                 <span>{exam.subject?.name || "Matière générale"}</span>
                             </div>
                             <div className="flex items-center text-gray-600">
-                                <Clock className="h-4 w-4 mr-2" />
+                                <Clock className="h-4 w-4 mr-2"/>
                                 <span>Durée: {exam.duration}</span>
                             </div>
                         </div>
                         <div className="text-right">
-                            <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mb-2">
-                                <Award className="w-3 h-3 mr-1" />
+                            <div
+                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mb-2">
+                                <Award className="w-3 h-3 mr-1"/>
                                 {exam.level || "Bac"}
                             </div>
-                            {lastScore && (
+                           {lastScore && (
                                 <div className="mt-2">
-                                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        <CheckCircle className="w-3 h-3 mr-1" />
-                                        Score: {Math.round((lastScore.score / lastScore.total) * 100)}%
+                                    <div
+                                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                            Math.round((lastScore.score / exam?.questions?.reduce((sum, a) => sum + a.points, 0)) * 100) >= 50
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                        }`}
+                                    >
+                                        {Math.round((lastScore.score / exam?.questions?.reduce((sum, a) => sum + a.points, 0)) * 100) >= 50 ? (
+                                            <CheckCircle className="w-3 h-3 mr-1" />
+                                        ) : (
+                                            <AlertCircle className="w-3 h-3 mr-1" />
+                                        )}
+                                        Score: {Math.round((lastScore.score / exam?.questions?.reduce((sum, a) => sum + a.points, 0)) * 100)}%
                                     </div>
                                 </div>
                             )}
@@ -240,7 +262,7 @@ export default function ExamDetailPage() {
                         href="/exams"
                         className="flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
                     >
-                        <ArrowLeft className="mr-2 h-5 w-5" />
+                        <ArrowLeft className="mr-2 h-5 w-5"/>
                         Retour aux examens
                     </Link>
 
@@ -248,10 +270,11 @@ export default function ExamDetailPage() {
                         href="/dashboard"
                         className="flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none"
                     >
-                        <CheckCircle className="mr-2 h-5 w-5" />
+                        <CheckCircle className="mr-2 h-5 w-5"/>
                         Voir tous mes résultats
                     </Link>
                 </div>
+                <ExamResult/>
             </div>
         );
     }
@@ -264,7 +287,7 @@ export default function ExamDetailPage() {
                 <Link href="/exams" className="hover:text-green-600">
                     Examens
                 </Link>
-                <ChevronRight className="h-4 w-4 mx-2" />
+                <ChevronRight className="h-4 w-4 mx-2"/>
                 <span className="text-gray-800 font-medium">{exam.title}</span>
             </div>
 
@@ -274,17 +297,18 @@ export default function ExamDetailPage() {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800 mb-2">{exam.title}</h1>
                         <div className="flex items-center mb-1 text-gray-600">
-                            <BookOpen className="h-4 w-4 mr-2" />
+                            <BookOpen className="h-4 w-4 mr-2"/>
                             <span>{exam.subject?.name || "Matière générale"}</span>
                         </div>
                         <div className="flex items-center text-gray-600">
-                            <Clock className="h-4 w-4 mr-2" />
-                            <span>Durée: {exam.duration}</span>
+                            <Clock className="h-4 w-4 mr-2"/>
+                            <span>Durée: {exam?.duration}</span>
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mb-2">
-                            <Award className="w-3 h-3 mr-1" />
+                        <div
+                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mb-2">
+                            <Award className="w-3 h-3 mr-1"/>
                             {exam.level || "Bac"}
                         </div>
                     </div>
@@ -324,8 +348,9 @@ export default function ExamDetailPage() {
                     {/* Carte pour démarrer l'examen */}
                     <div className="bg-white shadow-sm rounded-lg p-6 mb-6">
                         <div className="text-center mb-4">
-                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Book className="h-8 w-8 text-green-600" />
+                            <div
+                                className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <Book className="h-8 w-8 text-green-600"/>
                             </div>
                             <h2 className="text-xl font-semibold text-gray-800">Prêt à commencer?</h2>
                             <p className="text-gray-600 text-sm mt-1">
@@ -339,7 +364,7 @@ export default function ExamDetailPage() {
                             disabled={examLoading}
                         >
                             {examLoading ? 'Chargement...' : 'Commencer l\'examen'}
-                            <ChevronRight className="ml-1 h-5 w-5" />
+                            <ChevronRight className="ml-1 h-5 w-5"/>
                         </button>
 
                         <div className="mt-4 text-xs text-center text-gray-500">
@@ -352,19 +377,19 @@ export default function ExamDetailPage() {
                         <h3 className="font-medium text-gray-700 mb-2">Conseils:</h3>
                         <ul className="text-sm text-gray-600 space-y-2">
                             <li className="flex items-start">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5"/>
                                 <span>Gérez bien votre temps pendant l'examen</span>
                             </li>
                             <li className="flex items-start">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5"/>
                                 <span>Répondez d'abord aux questions dont vous êtes sûr</span>
                             </li>
                             <li className="flex items-start">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5"/>
                                 <span>Utilisez la fonctionnalité de marquage pour les questions difficiles</span>
                             </li>
                             <li className="flex items-start">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5"/>
                                 <span>Vérifiez vos réponses avant de finaliser l'examen</span>
                             </li>
                         </ul>

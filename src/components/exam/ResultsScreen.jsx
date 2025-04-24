@@ -1,20 +1,103 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     CheckCircle, XCircle, AlertCircle, Award, ArrowLeft,
-    ChevronDown, ChevronUp, Eye, EyeOff, Share, Download,
-    Clock, BarChart3, Book, Home
+    ChevronDown, ChevronUp, Eye, Clock, Book
 } from 'lucide-react';
 
 export default function ResultsScreen({ result, exam, onBackToDetail }) {
     const router = useRouter();
     const [showDetails, setShowDetails] = useState(false);
     const [expandedSections, setExpandedSections] = useState({});
+    const [calculatedResults, setCalculatedResults] = useState({
+        score: 0,
+        total: 0,
+        percentage: 0,
+        correctCount: 0,
+        incorrectCount: 0,
+        unansweredCount: 0,
+        questionResults: []
+    });
+
+    // Calculer les résultats au chargement
+    useEffect(() => {
+        if (exam && exam.questions && result && result.answers) {
+            calculateResults();
+        }
+    }, [exam, result]);
+
+    // Fonction pour calculer les résultats
+    const calculateResults = () => {
+        let score = 0;
+        let total = 0;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let unansweredCount = 0;
+        let questionResults = [];
+
+        exam.questions.forEach(question => {
+            const userAnswer = result.answers[question.id];
+            const points = question.points || 0;
+            total += points;
+
+            let isCorrect = false;
+
+            if (!userAnswer) {
+                unansweredCount++;
+            } else {
+                if (question.type === 'true-false') {
+                    isCorrect = userAnswer === question.correct_answer;
+                } else if (question.type === 'multiple') {
+                    // Pour les questions à choix multiples
+                    const correctAnswers = Array.isArray(question.correct_answer)
+                        ? question.correct_answer
+                        : JSON.parse(question.correct_answer);
+
+                    const userAnswers = Array.isArray(userAnswer) ? userAnswer : [userAnswer];
+
+                    // Vérifier si les réponses sont identiques (même contenu, peut-être ordre différent)
+                    isCorrect =
+                        correctAnswers.length === userAnswers.length &&
+                        correctAnswers.every(ans => userAnswers.includes(ans)) &&
+                        userAnswers.every(ans => correctAnswers.includes(ans));
+                } else {
+                    // Pour les questions à choix unique
+                    isCorrect = userAnswer === question.correct_answer;
+                }
+
+                if (isCorrect) {
+                    correctCount++;
+                    score += points;
+                } else {
+                    incorrectCount++;
+                }
+            }
+
+            questionResults.push({
+                question,
+                userAnswer,
+                isCorrect,
+                status: !userAnswer ? 'unanswered' : isCorrect ? 'correct' : 'incorrect'
+            });
+        });
+
+        const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+
+        setCalculatedResults({
+            score,
+            total,
+            percentage,
+            correctCount,
+            incorrectCount,
+            unansweredCount,
+            questionResults
+        });
+    };
 
     // Si pas de résultat, afficher un message d'erreur
-    if (!result) {
+    if (!result || !exam) {
         return (
             <div className="container mx-auto px-4 py-8 max-w-4xl">
                 <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-6">
@@ -34,11 +117,9 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
         );
     }
 
-    // Calculer le pourcentage de réussite
-    const percentage = Math.round((result.score / result.total) * 100);
-
     // Déterminer la classe de couleur en fonction du pourcentage
     const getColorClass = () => {
+        const { percentage } = calculatedResults;
         if (percentage >= 80) return 'text-green-600';
         if (percentage >= 60) return 'text-blue-600';
         if (percentage >= 50) return 'text-yellow-600';
@@ -47,6 +128,7 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
 
     // Déterminer le message de réussite
     const getSuccessMessage = () => {
+        const { percentage } = calculatedResults;
         if (percentage >= 80) return 'Excellent !';
         if (percentage >= 60) return 'Bon travail !';
         if (percentage >= 50) return 'Passable';
@@ -79,6 +161,20 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
         }));
     };
 
+    // Obtenir les options d'une question
+    const parseOptions = (question) => {
+        if (!question.options) return [];
+
+        try {
+            return typeof question.options === 'string'
+                ? JSON.parse(question.options)
+                : question.options;
+        } catch (e) {
+            console.error("Erreur lors du parsing des options:", e);
+            return [];
+        }
+    };
+
     return (
         <div className="bg-gray-50 min-h-screen py-8">
             <div className="container mx-auto px-4 max-w-4xl">
@@ -96,15 +192,15 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                             <Award className="h-12 w-12 text-yellow-500" />
                         </div>
                         <div className="text-4xl font-bold mb-2 flex items-center justify-center">
-                            <span className={getColorClass()}>{percentage}%</span>
+                            <span className={getColorClass()}>{calculatedResults.percentage}%</span>
                         </div>
                         <div className="text-xl font-semibold text-gray-700 mb-2">
-                            {result.score} / {result.total} points
+                            {calculatedResults.score} / {calculatedResults.total} points
                         </div>
                         <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                            percentage >= 80 ? 'bg-green-100 text-green-800' :
-                                percentage >= 60 ? 'bg-blue-100 text-blue-800' :
-                                    percentage >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                            calculatedResults.percentage >= 80 ? 'bg-green-100 text-green-800' :
+                                calculatedResults.percentage >= 60 ? 'bg-blue-100 text-blue-800' :
+                                    calculatedResults.percentage >= 50 ? 'bg-yellow-100 text-yellow-800' :
                                         'bg-red-100 text-red-800'
                         }`}>
                             {getSuccessMessage()}
@@ -122,9 +218,9 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Réponses correctes</div>
                                     <div className="text-lg font-semibold">
-                                        {result.correctCount} / {result.totalQuestions}
+                                        {calculatedResults.correctCount} / {exam.questions.length}
                                         <span className="text-sm text-gray-500 ml-1">
-                                            ({Math.round((result.correctCount / result.totalQuestions) * 100)}%)
+                                            ({Math.round((calculatedResults.correctCount / exam.questions.length) * 100)}%)
                                         </span>
                                     </div>
                                 </div>
@@ -137,9 +233,9 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Réponses incorrectes</div>
                                     <div className="text-lg font-semibold">
-                                        {result.incorrectCount} / {result.totalQuestions}
+                                        {calculatedResults.incorrectCount} / {exam.questions.length}
                                         <span className="text-sm text-gray-500 ml-1">
-                                            ({Math.round((result.incorrectCount / result.totalQuestions) * 100)}%)
+                                            ({Math.round((calculatedResults.incorrectCount / exam.questions.length) * 100)}%)
                                         </span>
                                     </div>
                                 </div>
@@ -152,9 +248,9 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Sans réponse</div>
                                     <div className="text-lg font-semibold">
-                                        {result.unansweredCount} / {result.totalQuestions}
+                                        {calculatedResults.unansweredCount} / {exam.questions.length}
                                         <span className="text-sm text-gray-500 ml-1">
-                                            ({Math.round((result.unansweredCount / result.totalQuestions) * 100)}%)
+                                            ({Math.round((calculatedResults.unansweredCount / exam.questions.length) * 100)}%)
                                         </span>
                                     </div>
                                 </div>
@@ -167,12 +263,11 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Date de complétion</div>
                                     <div className="text-sm font-semibold">
-                                        {formatDate(result.date)}
+                                        {formatDate(result.completed_at || result.completedAt)}
                                     </div>
                                 </div>
                             </div>
                         </div>
-
 
                         {/* Détails des réponses (bouton toggle) */}
                         <button
@@ -197,11 +292,8 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                                 </div>
 
                                 {/* Liste des questions avec réponses */}
-                                {exam.questions.map((question, index) => {
-                                    // Simulation de l'état de la réponse (dans une vraie application, ceci viendrait du backend)
-                                    const isCorrect = index % 3 === 0;
-                                    const isIncorrect = index % 3 === 1;
-                                    const isUnanswered = index % 3 === 2;
+                                {calculatedResults.questionResults.map((item, index) => {
+                                    const { question, userAnswer, status } = item;
 
                                     return (
                                         <div key={question.id} className="divide-y">
@@ -210,21 +302,21 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                                                 onClick={() => toggleSection(question.id)}
                                             >
                                                 <div className="w-12 text-center text-gray-500">{index + 1}</div>
-                                                <div className="flex-1 text-gray-800 line-clamp-1">{question.text}</div>
+                                                <div className="flex-1 text-gray-800 line-clamp-1">{question.content}</div>
                                                 <div className="w-24 flex justify-center">
-                                                    {isCorrect && (
+                                                    {status === 'correct' && (
                                                         <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center">
                                                             <CheckCircle className="h-3 w-3 mr-1" />
                                                             Correct
                                                         </span>
                                                     )}
-                                                    {isIncorrect && (
+                                                    {status === 'incorrect' && (
                                                         <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full flex items-center">
                                                             <XCircle className="h-3 w-3 mr-1" />
                                                             Incorrect
                                                         </span>
                                                     )}
-                                                    {isUnanswered && (
+                                                    {status === 'unanswered' && (
                                                         <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full flex items-center">
                                                             <AlertCircle className="h-3 w-3 mr-1" />
                                                             Sans réponse
@@ -242,39 +334,83 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                                             {/* Détails expandables de la question */}
                                             {expandedSections[question.id] && (
                                                 <div className="p-4 bg-gray-50">
-                                                    <p className="font-medium text-gray-800 mb-3">{question.text}</p>
+                                                    <p className="font-medium text-gray-800 mb-3">{question.content}</p>
+                                                    <p className="text-sm text-gray-600 mb-2">
+                                                        Type: {question.type === 'multiple' ? 'Choix multiple' :
+                                                        question.type === 'single' ? 'Choix unique' :
+                                                            'Vrai ou Faux'} •
+                                                        Points: {question.points}
+                                                    </p>
 
-                                                    {/* Afficher les options si applicable */}
-                                                    {question.options && (
+                                                    {/* Afficher les options pour les questions à choix */}
+                                                    {(question.type === 'single' || question.type === 'multiple') && (
                                                         <div className="space-y-2 mb-3">
                                                             <p className="text-sm text-gray-600">Options :</p>
-                                                            {question.options.map((option) => (
-                                                                <div
-                                                                    key={option.id}
-                                                                    className={`p-2 rounded-md text-sm ${
-                                                                        isCorrect && question.correctAnswer === option.id ?
-                                                                            'bg-green-100 border border-green-300' :
-                                                                            isIncorrect && question.correctAnswer === option.id ?
-                                                                                'bg-green-100 border border-green-300' :
-                                                                                isIncorrect && option.id === 'option-1' ? // Simulant une réponse incorrecte
-                                                                                    'bg-red-100 border border-red-300' :
-                                                                                    'bg-white border border-gray-200'
-                                                                    }`}
-                                                                >
-                                                                    <div className="flex items-center">
-                                                                        {isCorrect && question.correctAnswer === option.id && (
-                                                                            <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                                                                        )}
-                                                                        {isIncorrect && question.correctAnswer === option.id && (
-                                                                            <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                                                                        )}
-                                                                        {isIncorrect && option.id === 'option-1' && (
-                                                                            <XCircle className="h-4 w-4 text-red-600 mr-2 flex-shrink-0" />
-                                                                        )}
-                                                                        <span>{option.text}</span>
+                                                            {parseOptions(question).map((option) => {
+                                                                const correctAnswers = Array.isArray(question.correct_answer)
+                                                                    ? question.correct_answer
+                                                                    : question.correct_answer.startsWith('[')
+                                                                        ? JSON.parse(question.correct_answer)
+                                                                        : [question.correct_answer];
+
+                                                                const userAnswers = Array.isArray(userAnswer)
+                                                                    ? userAnswer
+                                                                    : userAnswer ? [userAnswer] : [];
+
+                                                                const isCorrectOption = correctAnswers.includes(option.id);
+                                                                const isSelectedByUser = userAnswers.includes(option.id);
+
+                                                                return (
+                                                                    <div
+                                                                        key={option.id}
+                                                                        className={`p-2 rounded-md text-sm ${
+                                                                            isCorrectOption && isSelectedByUser
+                                                                                ? 'bg-green-100 border border-green-300'
+                                                                                : isCorrectOption
+                                                                                    ? 'bg-green-50 border border-green-200'
+                                                                                    : isSelectedByUser
+                                                                                        ? 'bg-red-100 border border-red-300'
+                                                                                        : 'bg-white border border-gray-200'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            {isCorrectOption && isSelectedByUser && (
+                                                                                <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
+                                                                            )}
+                                                                            {isCorrectOption && !isSelectedByUser && (
+                                                                                <CheckCircle className="h-4 w-4 text-green-400 mr-2 flex-shrink-0" />
+                                                                            )}
+                                                                            {!isCorrectOption && isSelectedByUser && (
+                                                                                <XCircle className="h-4 w-4 text-red-600 mr-2 flex-shrink-0" />
+                                                                            )}
+                                                                            <span>{option.text}</span>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Pour les questions vrai/faux */}
+                                                    {question.type === 'true-false' && (
+                                                        <div className="space-y-2 mb-3">
+                                                            <p className="text-sm text-gray-600">Votre réponse :</p>
+                                                            <div className={`p-2 rounded-md text-sm ${
+                                                                userAnswer === question.correct_answer
+                                                                    ? 'bg-green-100 border border-green-300'
+                                                                    : userAnswer
+                                                                        ? 'bg-red-100 border border-red-300'
+                                                                        : 'bg-gray-100 border border-gray-300'
+                                                            }`}>
+                                                                {userAnswer === 'true' ? 'Vrai' :
+                                                                    userAnswer === 'false' ? 'Faux' :
+                                                                        'Sans réponse'}
+                                                            </div>
+
+                                                            <p className="text-sm text-gray-600 mt-2">Réponse correcte :</p>
+                                                            <div className="p-2 rounded-md text-sm bg-green-100 border border-green-300">
+                                                                {question.correct_answer === 'true' ? 'Vrai' : 'Faux'}
+                                                            </div>
                                                         </div>
                                                     )}
 
@@ -282,11 +418,15 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                                                     <div className="text-sm bg-blue-50 p-3 rounded-md text-blue-800 border border-blue-200">
                                                         <p className="font-medium mb-1">Explication :</p>
                                                         <p>
-                                                            {isCorrect ?
-                                                                "Votre réponse est correcte ! Cette question portait sur les concepts fondamentaux de cette section." :
-                                                                isIncorrect ?
-                                                                    "Votre réponse est incorrecte. La bonne réponse s'appuie sur le théorème principal de cette section." :
-                                                                    "Vous n'avez pas répondu à cette question. La réponse fait référence aux concepts clés du cours."
+                                                            {status === 'correct'
+                                                                ? "Votre réponse est correcte ! Vous avez bien compris ce concept."
+                                                                : status === 'incorrect'
+                                                                    ? `Votre réponse est incorrecte. La réponse correcte est ${
+                                                                        question.type === 'true-false'
+                                                                            ? question.correct_answer === 'true' ? 'Vrai' : 'Faux'
+                                                                            : 'indiquée ci-dessus'
+                                                                    }.`
+                                                                    : "Vous n'avez pas répondu à cette question."
                                                             }
                                                         </p>
                                                     </div>
@@ -319,8 +459,6 @@ export default function ResultsScreen({ result, exam, onBackToDetail }) {
                         </div>
                     </div>
                 </div>
-
-
 
                 {/* Défilement vers le haut */}
                 <div className="text-center mb-4">

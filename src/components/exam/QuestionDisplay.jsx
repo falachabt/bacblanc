@@ -19,6 +19,7 @@ export default function QuestionDisplay({ question, userAnswer, onAnswer }) {
 
     // Afficher différents types de questions
     const renderQuestionInput = () => {
+        console.log("questions type", question.type);
         switch (question.type) {
             case 'multiple':
                 return renderMultipleChoiceQuestion();
@@ -180,7 +181,7 @@ export default function QuestionDisplay({ question, userAnswer, onAnswer }) {
     return (
         <div className="question-display">
             <div className="mb-6">
-                <p className="text-gray-800 text-base mb-2">{question.text}</p>
+                <p className="text-gray-800 text-base mb-2">{question.content}</p>
             </div>
             {renderQuestionInput()}
         </div>

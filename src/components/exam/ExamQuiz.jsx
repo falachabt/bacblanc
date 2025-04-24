@@ -36,10 +36,12 @@ export default function ExamQuiz({ exam, onBack }) {
     const questionContainerRef = useRef(null);
     const autoSaveIntervalRef = useRef(null);
 
+
+
     // Convertir correctement la durée de l'examen en secondes
     const getDurationInSeconds = (durationStr) => {
         // Regex pour extraire les heures et minutes (format 2h30)
-        const match = durationStr.match(/(\d+)h(\d+)?/);
+        const match = durationStr?.match(/(\d+)h(\d+)?/);
         if (match) {
             const hours = parseInt(match[1], 10) || 0;
             const minutes = parseInt(match[2], 10) || 0;
@@ -49,20 +51,18 @@ export default function ExamQuiz({ exam, onBack }) {
         return 3600;
     };
 
-    // Charger l'examen et initialiser le timer
-    useEffect(() => {
-        if (!exam) return;
 
+    async function loadExam() {
         console.log("Chargement de l'examen:", exam.title, "avec durée:", exam.duration);
 
         // Charger la progression sauvegardée
-        const savedProgress = loadExamState(exam.id);
+        const savedProgress = await loadExamState(exam.id);
 
         if (savedProgress) {
             console.log("Progression sauvegardée trouvée:", savedProgress);
 
             try {
-                setCurrentQuestionIndex(savedProgress.currentQuestion || 0);
+                setCurrentQuestionIndex(savedProgress.last_open_question || 0);
                 setAnswers(savedProgress.answers || {});
                 setFlaggedQuestions(savedProgress.flaggedQuestions || []);
 
@@ -77,7 +77,7 @@ export default function ExamQuiz({ exam, onBack }) {
                     setTimeLeft(durationSeconds);
 
                     // Sauvegarder immédiatement avec le temps initialisé
-                    saveProgress(durationSeconds);
+                    // saveProgress(durationSeconds);
                 }
 
                 setLastSaveTime(new Date().getTime());
@@ -89,6 +89,18 @@ export default function ExamQuiz({ exam, onBack }) {
             console.log("Aucune progression trouvée, initialisation d'un nouvel examen");
             initializeExam();
         }
+
+
+
+    }
+
+
+    // Charger l'examen et initialiser le timer
+    useEffect(() => {
+        if (!exam) return;
+
+
+        loadExam();
 
         // Commencer le timer
         const interval = setInterval(() => {
@@ -110,6 +122,7 @@ export default function ExamQuiz({ exam, onBack }) {
         }, 1000);
 
         setIntervalId(interval);
+
 
         // Nettoyage à la sortie
         return () => {
@@ -143,18 +156,9 @@ export default function ExamQuiz({ exam, onBack }) {
     }, [answers, currentQuestionIndex, flaggedQuestions, timeLeft, isFinished]);
 
     // Initialiser l'examen
-    const initializeExam = () => {
+    const initializeExam = async () => {
         // Obtenir la durée de l'examen en secondes
-        const durationSeconds = getDurationInSeconds(exam.duration);
-        console.log("Initialisation de l'examen avec durée:", durationSeconds, "secondes");
-
-        setTimeLeft(durationSeconds);
-        setAnswers({});
-        setFlaggedQuestions([]);
-        setCurrentQuestionIndex(0);
-
-        // Sauvegarder immédiatement cette initialisation
-        saveProgress(durationSeconds);
+        await loadExam()
     };
 
     // Gérer la fin du temps
@@ -231,7 +235,7 @@ export default function ExamQuiz({ exam, onBack }) {
                 answers: answersToSave,
                 flaggedQuestions: flagsToSave,
                 timeLeft: timeToSave,
-                timestamp: new Date().getTime()
+                timestamp: new Date()
             });
 
             // Mettre à jour l'heure de la dernière sauvegarde
@@ -281,7 +285,8 @@ export default function ExamQuiz({ exam, onBack }) {
     }
 
     // Question actuelle
-    const currentQuestion = exam.questions[currentQuestionIndex];
+    // console.log("exam questions" , exam.questions);
+    const currentQuestion = exam?.questions && exam?.questions[currentQuestionIndex];
     if (!currentQuestion) return <div>Question non trouvée</div>;
 
     return (

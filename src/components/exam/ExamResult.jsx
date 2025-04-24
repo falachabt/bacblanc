@@ -1,20 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useExam } from '@/context/ExamContext';
 import Link from 'next/link';
 import {
     CheckCircle, XCircle, AlertCircle, Award, ArrowLeft,
-    ChevronDown, ChevronUp, Eye, Clock, BarChart3, Book, Home
+    ChevronDown, ChevronUp, Eye, Clock, Book
 } from 'lucide-react';
+import { formatDate } from '@/utils/examUtils';
 
-export default function ExamResult({ examId }) {
+export default function ExamResult() {
     const router = useRouter();
     const { getExamById, getExistingResult } = useExam();
+    const { id } = useParams();
+    const examId = id;
 
     const [exam, setExam] = useState(null);
     const [results, setResults] = useState(null);
+    const [calculatedResults, setCalculatedResults] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -28,33 +32,139 @@ export default function ExamResult({ examId }) {
             return;
         }
 
-        try {
-            // Récupérer les informations de l'examen
-            const examData = getExamById(examId);
-            if (!examData) {
-                setError("Examen non trouvé");
+        async function fetchData() {
+            try {
+                setLoading(true);
+                const fetchedExam = await getExamById(examId);
+                const fetchedResults = await getExistingResult(examId);
+
+                if (!fetchedExam) {
+                    setError("Examen introuvable");
+                    return;
+                }
+
+                console.log("Examen chargé:", fetchedExam);
+                console.log("Résultats chargés:", fetchedResults);
+
+                setExam(fetchedExam);
+                setResults(fetchedResults);
+            } catch (err) {
+                console.error("Erreur lors du chargement des résultats :", err);
+                setError("Erreur lors du chargement des résultats. Veuillez réessayer.");
+            } finally {
                 setLoading(false);
-                return;
             }
-
-            setExam(examData);
-
-            // Récupérer les résultats
-            const resultData = getExistingResult(examId);
-            if (!resultData) {
-                setError("Résultats non disponibles");
-                setLoading(false);
-                return;
-            }
-
-            setResults(resultData);
-        } catch (err) {
-            console.error("Erreur lors du chargement des résultats:", err);
-            setError("Impossible de charger les résultats");
-        } finally {
-            setLoading(false);
         }
+
+        fetchData();
     }, [examId, getExamById, getExistingResult]);
+
+    // Calculer les résultats détaillés quand l'examen et les résultats sont disponibles
+    useEffect(() => {
+        if (exam && results && results.answers) {
+            calculateDetailedResults();
+        }
+    }, [exam, results]);
+
+    // Fonction pour calculer les résultats détaillés
+    const calculateDetailedResults = () => {
+        if (!exam || !exam.questions || !results || !results.answers) return;
+
+        console.log("Calcul des résultats détaillés...");
+        console.log("Score stocké dans results:", results.score);
+        console.log("Total des points:", exam.questions.reduce((sum, q) => sum + (parseFloat(q.points) || 1), 0));
+
+        // Utiliser le score déjà calculé et stocké dans results
+        // C'est le score qui a été calculé lors de la complétion de l'examen
+        const score = results.score || 0;
+        const total = exam.questions.reduce((sum, q) => sum + (parseFloat(q.points) || 1), 0);
+
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let unansweredCount = 0;
+        let questionDetails = [];
+
+        exam.questions.forEach(question => {
+            const userAnswer = results.answers[question.id];
+            const points = parseFloat(question.points) || 1;
+
+            // Convertir correct_answer en format utilisable (gérer les chaînes JSON si nécessaire)
+            let correctAnswer = question.correct_answer;
+            if (typeof correctAnswer === 'string' && correctAnswer.startsWith('[')) {
+                try {
+                    correctAnswer = JSON.parse(correctAnswer);
+                } catch (e) {
+                    console.error("Erreur de parsing de correct_answer:", e);
+                }
+            }
+
+            let isCorrect = false;
+            let status = 'unanswered';
+
+            if (!userAnswer) {
+                unansweredCount++;
+                status = 'unanswered';
+            } else {
+                // Vérifier si la réponse est correcte selon le type de question
+                if (question.type === 'true-false') {
+                    isCorrect = userAnswer === correctAnswer;
+                } else if (question.type === 'multiple') {
+                    // Pour les questions à choix multiples
+                    const correctAnswerArray = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
+                    const userAnswerArray = Array.isArray(userAnswer) ? userAnswer : [userAnswer];
+
+                    // Vérifier si les tableaux ont la même longueur et les mêmes éléments
+                    isCorrect =
+                        correctAnswerArray.length === userAnswerArray.length &&
+                        correctAnswerArray.every(answer => userAnswerArray.includes(answer));
+                } else {
+                    // Pour les questions à choix unique
+                    isCorrect = userAnswer === correctAnswer;
+                }
+
+                if (isCorrect) {
+                    correctCount++;
+                    status = 'correct';
+                } else {
+                    incorrectCount++;
+                    status = 'incorrect';
+                }
+            }
+
+            // Ajouter les détails de cette question
+            questionDetails.push({
+                question,
+                userAnswer,
+                correctAnswer,
+                isCorrect,
+                status,
+                points
+            });
+        });
+
+        // Utiliser le pourcentage calculé à partir du score stocké
+        const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+
+        console.log("Résultats calculés:", {
+            score,
+            total,
+            percentage,
+            correctCount,
+            incorrectCount,
+            unansweredCount
+        });
+
+        setCalculatedResults({
+            score,
+            total,
+            percentage,
+            correctCount,
+            incorrectCount,
+            unansweredCount,
+            questionDetails,
+            totalQuestions: exam.questions.length
+        });
+    };
 
     // Affichage pendant le chargement
     if (loading) {
@@ -87,7 +197,7 @@ export default function ExamResult({ examId }) {
     }
 
     // Si pas de résultats ou d'examen
-    if (!results || !exam) {
+    if (!results || !exam || !calculatedResults) {
         return (
             <div className="container mx-auto px-4 py-8">
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-6">
@@ -104,11 +214,9 @@ export default function ExamResult({ examId }) {
         );
     }
 
-    // Calcul du pourcentage de réussite
-    const percentage = Math.round((results.score / results.total) * 100);
-
     // Déterminer la classe de couleur en fonction du pourcentage
     const getColorClass = () => {
+        const { percentage } = calculatedResults;
         if (percentage >= 80) return 'text-green-600';
         if (percentage >= 60) return 'text-blue-600';
         if (percentage >= 50) return 'text-yellow-600';
@@ -117,18 +225,11 @@ export default function ExamResult({ examId }) {
 
     // Déterminer le message de réussite
     const getSuccessMessage = () => {
+        const { percentage } = calculatedResults;
         if (percentage >= 80) return 'Excellent !';
         if (percentage >= 60) return 'Bon travail !';
         if (percentage >= 50) return 'Passable';
         return 'À améliorer';
-    };
-
-    // Convertir une date ISO en format lisible
-    const formatDate = (isoDate) => {
-        if (!isoDate) return 'Date inconnue';
-
-        const date = new Date(isoDate);
-        return date.toLocaleDateString() + ' à ' + date.toLocaleTimeString();
     };
 
     // Toggle l'affichage des détails
@@ -142,6 +243,20 @@ export default function ExamResult({ examId }) {
             ...prev,
             [questionId]: !prev[questionId]
         }));
+    };
+
+    // Parser les options d'une question
+    const parseOptions = (question) => {
+        if (!question.options) return [];
+
+        try {
+            return typeof question.options === 'string'
+                ? JSON.parse(question.options)
+                : question.options;
+        } catch (e) {
+            console.error("Erreur lors du parsing des options:", e);
+            return [];
+        }
     };
 
     return (
@@ -161,15 +276,15 @@ export default function ExamResult({ examId }) {
                             <Award className="h-12 w-12 text-yellow-500" />
                         </div>
                         <div className="text-4xl font-bold mb-2 flex items-center justify-center">
-                            <span className={getColorClass()}>{percentage}%</span>
+                            <span className={getColorClass()}>{calculatedResults.percentage}%</span>
                         </div>
                         <div className="text-xl font-semibold text-gray-700 mb-2">
-                            {results.score} / {results.total} points
+                            {calculatedResults.score} / {calculatedResults.total} points
                         </div>
                         <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                            percentage >= 80 ? 'bg-green-100 text-green-800' :
-                                percentage >= 60 ? 'bg-blue-100 text-blue-800' :
-                                    percentage >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                            calculatedResults.percentage >= 80 ? 'bg-green-100 text-green-800' :
+                                calculatedResults.percentage >= 60 ? 'bg-blue-100 text-blue-800' :
+                                    calculatedResults.percentage >= 50 ? 'bg-yellow-100 text-yellow-800' :
                                         'bg-red-100 text-red-800'
                         }`}>
                             {getSuccessMessage()}
@@ -187,9 +302,9 @@ export default function ExamResult({ examId }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Réponses correctes</div>
                                     <div className="text-lg font-semibold">
-                                        {results.correctCount || 0} / {results.totalQuestions || exam.questions.length}
+                                        {calculatedResults.correctCount} / {calculatedResults.totalQuestions}
                                         <span className="text-sm text-gray-500 ml-1">
-                                            ({Math.round(((results.correctCount || 0) / (results.totalQuestions || exam.questions.length)) * 100)}%)
+                                            ({Math.round((calculatedResults.correctCount / calculatedResults.totalQuestions) * 100)}%)
                                         </span>
                                     </div>
                                 </div>
@@ -202,9 +317,9 @@ export default function ExamResult({ examId }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Réponses incorrectes</div>
                                     <div className="text-lg font-semibold">
-                                        {results.incorrectCount || 0} / {results.totalQuestions || exam.questions.length}
+                                        {calculatedResults.incorrectCount} / {calculatedResults.totalQuestions}
                                         <span className="text-sm text-gray-500 ml-1">
-                                            ({Math.round(((results.incorrectCount || 0) / (results.totalQuestions || exam.questions.length)) * 100)}%)
+                                            ({Math.round((calculatedResults.incorrectCount / calculatedResults.totalQuestions) * 100)}%)
                                         </span>
                                     </div>
                                 </div>
@@ -217,9 +332,9 @@ export default function ExamResult({ examId }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Sans réponse</div>
                                     <div className="text-lg font-semibold">
-                                        {results.unansweredCount || 0} / {results.totalQuestions || exam.questions.length}
+                                        {calculatedResults.unansweredCount} / {calculatedResults.totalQuestions}
                                         <span className="text-sm text-gray-500 ml-1">
-                                            ({Math.round(((results.unansweredCount || 0) / (results.totalQuestions || exam.questions.length)) * 100)}%)
+                                            ({Math.round((calculatedResults.unansweredCount / calculatedResults.totalQuestions) * 100)}%)
                                         </span>
                                     </div>
                                 </div>
@@ -232,14 +347,14 @@ export default function ExamResult({ examId }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Date de complétion</div>
                                     <div className="text-sm font-semibold">
-                                        {formatDate(results.date)}
+                                        {formatDate(results.completed_at || results.completedAt || results.date)}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Sections par catégories si disponible */}
-                        {results.sections && Object.keys(results.sections).length > 0 && (
+                        {results.sections && Object.keys(results.sections)?.length > 0 && (
                             <div className="mb-6">
                                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Résultats par section</h3>
                                 <div className="bg-gray-50 rounded-lg p-4 divide-y divide-gray-200">
@@ -247,9 +362,9 @@ export default function ExamResult({ examId }) {
                                         <div key={idx} className="py-3 flex justify-between items-center">
                                             <span className="font-medium text-gray-700">{section}</span>
                                             <span className="font-semibold">
-                                                {results.sections[section].score}/{results.sections[section].total}
+                                                {results.sections[section].score}/{results.sections[section]?.total}
                                                 <span className="text-sm text-gray-500 ml-1">
-                                                    ({Math.round((results.sections[section].score / results.sections[section].total) * 100)}%)
+                                                    ({Math.round((results.sections[section].score / results.sections[section]?.total) * 100)}%)
                                                 </span>
                                             </span>
                                         </div>
@@ -281,21 +396,8 @@ export default function ExamResult({ examId }) {
                                 </div>
 
                                 {/* Liste des questions avec réponses */}
-                                {exam.questions.map((question, index) => {
-                                    // Récupérer l'état de la réponse si disponible, sinon simuler
-                                    // Dans un vrai cas d'utilisation, ces informations viendraient de results.answers ou équivalent
-                                    const questionResult = results.answers && results.answers[question.id]
-                                        ? results.answers[question.id]
-                                        : {
-                                            // Simulation pour l'exemple
-                                            status: index % 3 === 0 ? 'correct' : (index % 3 === 1 ? 'incorrect' : 'unanswered'),
-                                            selectedOption: index % 3 === 0 ? question.correctAnswer :
-                                                (index % 3 === 1 ? 'option-1' : null)
-                                        };
-
-                                    const isCorrect = questionResult.status === 'correct';
-                                    const isIncorrect = questionResult.status === 'incorrect';
-                                    const isUnanswered = questionResult.status === 'unanswered';
+                                {calculatedResults.questionDetails.map((detail, index) => {
+                                    const { question, userAnswer, status } = detail;
 
                                     return (
                                         <div key={question.id} className="divide-y">
@@ -304,21 +406,21 @@ export default function ExamResult({ examId }) {
                                                 onClick={() => toggleSection(question.id)}
                                             >
                                                 <div className="w-12 text-center text-gray-500">{index + 1}</div>
-                                                <div className="flex-1 text-gray-800 line-clamp-1">{question.text}</div>
+                                                <div className="flex-1 text-gray-800 line-clamp-1">{question.content}</div>
                                                 <div className="w-24 flex justify-center">
-                                                    {isCorrect && (
+                                                    {status === 'correct' && (
                                                         <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center">
                                                             <CheckCircle className="h-3 w-3 mr-1" />
                                                             Correct
                                                         </span>
                                                     )}
-                                                    {isIncorrect && (
+                                                    {status === 'incorrect' && (
                                                         <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full flex items-center">
                                                             <XCircle className="h-3 w-3 mr-1" />
                                                             Incorrect
                                                         </span>
                                                     )}
-                                                    {isUnanswered && (
+                                                    {status === 'unanswered' && (
                                                         <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full flex items-center">
                                                             <AlertCircle className="h-3 w-3 mr-1" />
                                                             Sans réponse
@@ -336,39 +438,81 @@ export default function ExamResult({ examId }) {
                                             {/* Détails expandables de la question */}
                                             {expandedSections[question.id] && (
                                                 <div className="p-4 bg-gray-50">
-                                                    <p className="font-medium text-gray-800 mb-3">{question.text}</p>
+                                                    <p className="font-medium text-gray-800 mb-3">{question.content}</p>
+                                                    <p className="text-sm text-gray-600 mb-2">
+                                                        Type: {question.type === 'multiple' ? 'Choix multiple' :
+                                                        question.type === 'single' ? 'Choix unique' :
+                                                            'Vrai ou Faux'} •
+                                                        Points: {question.points}
+                                                    </p>
 
-                                                    {/* Afficher les options si applicable */}
-                                                    {question.options && (
+                                                    {/* Afficher les options pour les questions à choix */}
+                                                    {(question.type === 'single' || question.type === 'multiple') && (
                                                         <div className="space-y-2 mb-3">
                                                             <p className="text-sm text-gray-600">Options :</p>
-                                                            {question.options.map((option) => (
-                                                                <div
-                                                                    key={option.id}
-                                                                    className={`p-2 rounded-md text-sm ${
-                                                                        isCorrect && question.correctAnswer === option.id ?
-                                                                            'bg-green-100 border border-green-300' :
-                                                                            isIncorrect && question.correctAnswer === option.id ?
-                                                                                'bg-green-100 border border-green-300' :
-                                                                                isIncorrect && option.id === questionResult.selectedOption ?
-                                                                                    'bg-red-100 border border-red-300' :
-                                                                                    'bg-white border border-gray-200'
-                                                                    }`}
-                                                                >
-                                                                    <div className="flex items-center">
-                                                                        {isCorrect && question.correctAnswer === option.id && (
-                                                                            <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                                                                        )}
-                                                                        {isIncorrect && question.correctAnswer === option.id && (
-                                                                            <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                                                                        )}
-                                                                        {isIncorrect && option.id === questionResult.selectedOption && (
-                                                                            <XCircle className="h-4 w-4 text-red-600 mr-2 flex-shrink-0" />
-                                                                        )}
-                                                                        <span>{option.text}</span>
+                                                            {parseOptions(question).map((option) => {
+                                                                const correctAnswers = Array.isArray(detail.correctAnswer)
+                                                                    ? detail.correctAnswer
+                                                                    : [detail.correctAnswer];
+
+                                                                const userAnswers = Array.isArray(userAnswer)
+                                                                    ? userAnswer
+                                                                    : userAnswer ? [userAnswer] : [];
+
+                                                                const isCorrectOption = correctAnswers.includes(option.id);
+                                                                const isSelectedByUser = userAnswers.includes(option.id);
+
+                                                                return (
+                                                                    <div
+                                                                        key={option.id}
+                                                                        className={`p-2 rounded-md text-sm ${
+                                                                            isCorrectOption && isSelectedByUser
+                                                                                ? 'bg-green-100 border border-green-300'
+                                                                                : isCorrectOption
+                                                                                    ? 'bg-green-50 border border-green-200'
+                                                                                    : isSelectedByUser
+                                                                                        ? 'bg-red-100 border border-red-300'
+                                                                                        : 'bg-white border border-gray-200'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            {isCorrectOption && isSelectedByUser && (
+                                                                                <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
+                                                                            )}
+                                                                            {isCorrectOption && !isSelectedByUser && (
+                                                                                <CheckCircle className="h-4 w-4 text-green-400 mr-2 flex-shrink-0" />
+                                                                            )}
+                                                                            {!isCorrectOption && isSelectedByUser && (
+                                                                                <XCircle className="h-4 w-4 text-red-600 mr-2 flex-shrink-0" />
+                                                                            )}
+                                                                            <span>{option.text}</span>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Pour les questions vrai/faux */}
+                                                    {question.type === 'true-false' && (
+                                                        <div className="space-y-2 mb-3">
+                                                            <p className="text-sm text-gray-600">Votre réponse :</p>
+                                                            <div className={`p-2 rounded-md text-sm ${
+                                                                userAnswer === detail.correctAnswer
+                                                                    ? 'bg-green-100 border border-green-300'
+                                                                    : userAnswer
+                                                                        ? 'bg-red-100 border border-red-300'
+                                                                        : 'bg-gray-100 border border-gray-300'
+                                                            }`}>
+                                                                {userAnswer === 'true' ? 'Vrai' :
+                                                                    userAnswer === 'false' ? 'Faux' :
+                                                                        'Sans réponse'}
+                                                            </div>
+
+                                                            <p className="text-sm text-gray-600 mt-2">Réponse correcte :</p>
+                                                            <div className="p-2 rounded-md text-sm bg-green-100 border border-green-300">
+                                                                {detail.correctAnswer === 'true' ? 'Vrai' : 'Faux'}
+                                                            </div>
                                                         </div>
                                                     )}
 
@@ -376,11 +520,11 @@ export default function ExamResult({ examId }) {
                                                     <div className="text-sm bg-blue-50 p-3 rounded-md text-blue-800 border border-blue-200">
                                                         <p className="font-medium mb-1">Explication :</p>
                                                         <p>
-                                                            {isCorrect ?
-                                                                (question.explanation || "Votre réponse est correcte ! Cette question portait sur les concepts fondamentaux de cette section.") :
-                                                                isIncorrect ?
-                                                                    (question.explanation || "Votre réponse est incorrecte. La bonne réponse s'appuie sur le théorème principal de cette section.") :
-                                                                    (question.explanation || "Vous n'avez pas répondu à cette question. La réponse fait référence aux concepts clés du cours.")
+                                                            {status === 'correct'
+                                                                ? (question.explanation || "Votre réponse est correcte ! Vous avez bien compris ce concept.")
+                                                                : status === 'incorrect'
+                                                                    ? (question.explanation || `Votre réponse est incorrecte. La réponse correcte est indiquée ci-dessus.`)
+                                                                    : (question.explanation || "Vous n'avez pas répondu à cette question.")
                                                             }
                                                         </p>
                                                     </div>
@@ -396,19 +540,19 @@ export default function ExamResult({ examId }) {
                     {/* Message de résultat */}
                     <div className="p-6 bg-blue-50 border-t border-blue-100">
                         <div className="flex">
-                            {percentage >= 50 ? (
+                            {calculatedResults.percentage >= 50 ? (
                                 <CheckCircle className="h-6 w-6 text-green-600 mr-3 flex-shrink-0" />
                             ) : (
                                 <AlertCircle className="h-6 w-6 text-yellow-500 mr-3 flex-shrink-0" />
                             )}
                             <div>
                                 <p className="font-medium text-gray-800">
-                                    {percentage >= 50 ? 'Félicitations pour avoir réussi cet examen !' : 'Examen terminé'}
+                                    {calculatedResults.percentage >= 50 ? 'Félicitations pour avoir réussi cet examen !' : 'Examen terminé'}
                                 </p>
                                 <p className="text-gray-600 mt-1">
-                                    {percentage >= 80 ? "Excellent travail ! Vous maîtrisez très bien ce sujet." :
-                                        percentage >= 60 ? "Bon travail ! Continuez vos efforts pour progresser." :
-                                            percentage >= 50 ? "Vous avez obtenu un score satisfaisant. Continuez à vous améliorer." :
+                                    {calculatedResults.percentage >= 80 ? "Excellent travail ! Vous maîtrisez très bien ce sujet." :
+                                        calculatedResults.percentage >= 60 ? "Bon travail ! Continuez vos efforts pour progresser." :
+                                            calculatedResults.percentage >= 50 ? "Vous avez obtenu un score satisfaisant. Continuez à vous améliorer." :
                                                 "N'hésitez pas à revoir les concepts que vous n'avez pas bien maîtrisés."}
                                 </p>
                             </div>

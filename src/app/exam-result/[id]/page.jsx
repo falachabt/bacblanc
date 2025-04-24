@@ -2,8 +2,10 @@
 
 import { Suspense } from 'react';
 import ExamResult from '@/components/exam/ExamResult';
+import {useParams} from "next/navigation";
 
-export default function ExamResultPage({ params }) {
+export default function ExamResultPage() {
+    const params = useParams();
     const examId = params.id;
 
     return (
