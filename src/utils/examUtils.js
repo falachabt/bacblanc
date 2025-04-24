@@ -218,7 +218,7 @@ export function isAnswerCorrect(question, userAnswer) {
     switch (question.type) {
         case 'multiple':
             // For multiple-choice, check if all correct answers are selected and no incorrect ones
-            const correctSet = new Set(question.correctAnswers);
+            const correctSet = new Set(question.correct_answers);
             const userSet = new Set(userAnswer);
 
             return correctSet.size === userSet.size &&
@@ -226,15 +226,15 @@ export function isAnswerCorrect(question, userAnswer) {
 
         case 'single':
             // For single-choice, direct comparison
-            return userAnswer === question.correctAnswer;
+            return userAnswer === question.correct_answer;
 
         case 'text':
             // For text questions, case-insensitive comparison
-            return userAnswer.toLowerCase().trim() === question.correctAnswer.toLowerCase().trim();
+            return userAnswer.toLowerCase().trim() === question.correct_answer.toLowerCase().trim();
 
         case 'true-false':
             // For true/false questions, direct comparison
-            return userAnswer === question.correctAnswer;
+            return userAnswer === question.correct_answer;
 
         default:
             return false;
