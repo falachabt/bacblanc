@@ -79,8 +79,8 @@ const ExamCard = ({ exam, hasAccess }) => {
     };
 
     // Détermine si l'examen est disponible (date de disponibilité passée)
-    // const isAvailable = new Date(exam.available_at) <= new Date();
-    const isAvailable = true;
+    const isAvailable = new Date(exam.available_at) <= new Date();
+    // const isAvailable = true;
 
     // Détermine la couleur de l'arrière-plan de la carte en fonction du statut
     let cardBgClass = "bg-white";

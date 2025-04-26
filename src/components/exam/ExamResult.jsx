@@ -89,10 +89,10 @@ export default function ExamResult() {
             const points = parseFloat(question.points) || 1;
 
             // Convertir correct_answer en format utilisable (gérer les chaînes JSON si nécessaire)
-            let correctAnswer = question.correct_answer;
-            if (typeof correctAnswer === 'string' && correctAnswer.startsWith('[')) {
+            let correct_answer = question.correct_answer;
+            if (typeof correct_answer === 'string' && correct_answer.startsWith('[')) {
                 try {
-                    correctAnswer = JSON.parse(correctAnswer);
+                    correct_answer = JSON.parse(correct_answer);
                 } catch (e) {
                     console.error("Erreur de parsing de correct_answer:", e);
                 }
@@ -107,19 +107,19 @@ export default function ExamResult() {
             } else {
                 // Vérifier si la réponse est correcte selon le type de question
                 if (question.type === 'true-false') {
-                    isCorrect = userAnswer === correctAnswer;
+                    isCorrect = userAnswer === correct_answer;
                 } else if (question.type === 'multiple') {
                     // Pour les questions à choix multiples
-                    const correctAnswerArray = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
+                    const correct_answerArray = Array.isArray(correct_answer) ? correct_answer : [correct_answer];
                     const userAnswerArray = Array.isArray(userAnswer) ? userAnswer : [userAnswer];
 
                     // Vérifier si les tableaux ont la même longueur et les mêmes éléments
                     isCorrect =
-                        correctAnswerArray.length === userAnswerArray.length &&
-                        correctAnswerArray.every(answer => userAnswerArray.includes(answer));
+                        correct_answerArray.length === userAnswerArray.length &&
+                        correct_answerArray.every(answer => userAnswerArray.includes(answer));
                 } else {
                     // Pour les questions à choix unique
-                    isCorrect = userAnswer === correctAnswer;
+                    isCorrect = userAnswer === correct_answer;
                 }
 
                 if (isCorrect) {
@@ -135,7 +135,7 @@ export default function ExamResult() {
             questionDetails.push({
                 question,
                 userAnswer,
-                correctAnswer,
+                correct_answer,
                 isCorrect,
                 status,
                 points
@@ -451,15 +451,15 @@ export default function ExamResult() {
                                                         <div className="space-y-2 mb-3">
                                                             <p className="text-sm text-gray-600">Options :</p>
                                                             {parseOptions(question).map((option) => {
-                                                                const correctAnswers = Array.isArray(detail.correctAnswer)
-                                                                    ? detail.correctAnswer
-                                                                    : [detail.correctAnswer];
+                                                                const correct_answers = Array.isArray(detail.correct_answer)
+                                                                    ? detail.correct_answer
+                                                                    : [detail.correct_answer];
 
                                                                 const userAnswers = Array.isArray(userAnswer)
                                                                     ? userAnswer
                                                                     : userAnswer ? [userAnswer] : [];
 
-                                                                const isCorrectOption = correctAnswers.includes(option.id);
+                                                                const isCorrectOption = correct_answers.includes(option.id);
                                                                 const isSelectedByUser = userAnswers.includes(option.id);
 
                                                                 return (
@@ -498,7 +498,7 @@ export default function ExamResult() {
                                                         <div className="space-y-2 mb-3">
                                                             <p className="text-sm text-gray-600">Votre réponse :</p>
                                                             <div className={`p-2 rounded-md text-sm ${
-                                                                userAnswer === detail.correctAnswer
+                                                                userAnswer === detail.correct_answer
                                                                     ? 'bg-green-100 border border-green-300'
                                                                     : userAnswer
                                                                         ? 'bg-red-100 border border-red-300'
@@ -511,7 +511,7 @@ export default function ExamResult() {
 
                                                             <p className="text-sm text-gray-600 mt-2">Réponse correcte :</p>
                                                             <div className="p-2 rounded-md text-sm bg-green-100 border border-green-300">
-                                                                {detail.correctAnswer === 'true' ? 'Vrai' : 'Faux'}
+                                                                {detail.correct_answer === 'true' ? 'Vrai' : 'Faux'}
                                                             </div>
                                                         </div>
                                                     )}

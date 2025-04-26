@@ -57,7 +57,7 @@ export function convertDurationToSeconds(durationStr) {
  * @returns {string} Formatted time string
  */
 export function formatTime(seconds) {
-    if (seconds === null || isNaN(seconds) || seconds < 0) {
+    if (seconds == null || isNaN(seconds) || seconds < 0) {
         console.log("Invalid time value for formatting:", seconds);
         return "00:00:00";
     }
@@ -78,7 +78,7 @@ export function formatTime(seconds) {
 export function formatDate(date) {
     if (!date) return 'Date inconnue';
 
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const dateObj = typeof date == 'string' ? new Date(date) : date;
 
     return dateObj.toLocaleDateString() + ' à ' + dateObj.toLocaleTimeString();
 }
@@ -132,7 +132,7 @@ export function loadExamProgress(examId) {
                 const examsData = localStorage.getItem('exams_data');
                 if (examsData) {
                     const exams = JSON.parse(examsData);
-                    const exam = exams.find(e => e.id === examId);
+                    const exam = exams.find(e => e.id == examId);
                     if (exam && exam.duration) {
                         parsedProgress.timeLeft = convertDurationToSeconds(exam.duration);
                         console.log("Reset timeLeft to full duration:", parsedProgress.timeLeft);
@@ -221,20 +221,20 @@ export function isAnswerCorrect(question, userAnswer) {
             const correctSet = new Set(question.correct_answers);
             const userSet = new Set(userAnswer);
 
-            return correctSet.size === userSet.size &&
+            return correctSet.size == userSet.size &&
                 [...correctSet].every(value => userSet.has(value));
 
         case 'single':
             // For single-choice, direct comparison
-            return userAnswer === question.correct_answer;
+            return userAnswer == question.correct_answer;
 
         case 'text':
             // For text questions, case-insensitive comparison
-            return userAnswer.toLowerCase().trim() === question.correct_answer.toLowerCase().trim();
+            return userAnswer.toLowerCase().trim() == question.correct_answer.toLowerCase().trim();
 
         case 'true-false':
             // For true/false questions, direct comparison
-            return userAnswer === question.correct_answer;
+            return userAnswer == question.correct_answer;
 
         default:
             return false;
