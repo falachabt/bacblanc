@@ -3,35 +3,102 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useExam } from '@/context/ExamContext'; // Import useExam context
 import Link from 'next/link';
 import supabase from "@/lib/supabase";
 import {
     BookOpen, Clock, Award, ChevronRight, Lock, Calendar, AlertCircle,
     RefreshCw, Check, Unlock, CreditCard, Loader, ShieldCheck, Home,
-    ArrowLeft, FileText, Settings, BookX, Info, X
+    ArrowLeft, FileText, Settings, BookX, Info, X,
+    CheckCircle, AlertTriangle, PlayCircle  // Additional icons
 } from 'lucide-react';
 
 // Composant pour les cartes d'examen
 const ExamCard = ({ exam, hasAccess }) => {
     const router = useRouter();
+    const { isExamCompleted, isExamInProgress, getExistingResult } = useExam();
+    const [examStatus, setExamStatus] = useState({
+        isCompleted: false,
+        inProgress: false,
+        score: null,
+        loading: true
+    });
+
+    // Vérifier le statut de l'examen
+    useEffect(() => {
+        const checkExamStatus = async () => {
+            if (!hasAccess) {
+                setExamStatus({ isCompleted: false, inProgress: false, score: null, loading: false });
+                return;
+            }
+
+            try {
+                // Vérifier si l'examen est complété
+                const completed = await isExamCompleted(exam.id);
+                let score = null;
+
+                if (completed) {
+                    // Récupérer le score si l'examen est complété
+                    const result = await getExistingResult(exam.id);
+                    if (result) {
+                        score = {
+                            score: result.score,
+                            totalPoints: exam.questions?.reduce((sum, a) => sum + a.points, 0) || 100,
+                            percentage: Math.round((result.score / (exam.questions?.reduce((sum, a) => sum + a.points, 0) || 100)) * 100)
+                        };
+                    }
+                }
+
+                // Vérifier si l'examen est en cours
+                const inProgress = !completed && await isExamInProgress(exam.id);
+
+                setExamStatus({
+                    isCompleted: completed,
+                    inProgress: inProgress,
+                    score: score,
+                    loading: false
+                });
+            } catch (error) {
+                console.error("Error checking exam status:", error);
+                setExamStatus({ isCompleted: false, inProgress: false, score: null, loading: false });
+            }
+        };
+
+        checkExamStatus();
+    }, [exam.id, hasAccess, isExamCompleted, isExamInProgress, getExistingResult, exam.questions]);
 
     const handleExamClick = () => {
-        if (hasAccess) {
-            router.push(`/exams/${exam.id}`);
-        } else {
+        if (!hasAccess) {
             // Redirection vers la page de paiement
             router.push('/payment?globalAccess=true');
+            return;
         }
+
+        // Rediriger vers la page de l'examen, qu'il soit complété, en cours ou disponible
+        router.push(`/exams/${exam.id}`);
     };
 
     // Détermine si l'examen est disponible (date de disponibilité passée)
     const isAvailable = new Date(exam.available_at) <= new Date();
+    // const isAvailable = true;
+
+    // Détermine la couleur de l'arrière-plan de la carte en fonction du statut
+    let cardBgClass = "bg-white";
+    if (!isAvailable) {
+        cardBgClass = "bg-white";
+    } else if (!hasAccess) {
+        cardBgClass = "bg-white";
+    } else if (examStatus.isCompleted) {
+        cardBgClass = "bg-white border-l-4 border-green-500";
+    } else if (examStatus.inProgress) {
+        cardBgClass = "bg-white border-l-4 border-yellow-500";
+    }
 
     return (
         <div
             className={`border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow ${
-                !isAvailable ? 'bg-white' : hasAccess ? 'bg-white cursor-pointer' : 'bg-white'
-            }`}
+                cardBgClass
+            } ${isAvailable && hasAccess ? 'cursor-pointer' : ''}`}
             onClick={isAvailable && hasAccess ? handleExamClick : undefined}
         >
             <div className="p-3">
@@ -42,10 +109,27 @@ const ExamCard = ({ exam, hasAccess }) => {
                         {exam.subject?.code || "N/A"}
                     </span>
                     {hasAccess ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
-                            <Unlock size={12} className="mr-1" />
-                            Accès
-                        </span>
+                        examStatus.loading ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-600">
+                                <Loader size={12} className="mr-1 animate-spin" />
+                                Chargement...
+                            </span>
+                        ) : examStatus.isCompleted ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                                <CheckCircle size={12} className="mr-1" />
+                                Complété
+                            </span>
+                        ) : examStatus.inProgress ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <PlayCircle size={12} className="mr-1" />
+                                En cours
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                                <Unlock size={12} className="mr-1" />
+                                Accès
+                            </span>
+                        )
                     ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
                             <Lock size={12} className="mr-1" />
@@ -67,6 +151,20 @@ const ExamCard = ({ exam, hasAccess }) => {
                     Durée: {exam.duration.split(':')[0]}h{exam.duration.split(':')[1]}m
                 </div>
 
+                {/* Afficher le score si l'examen est complété */}
+                {hasAccess && examStatus.isCompleted && examStatus.score && (
+                    <div className="mb-2">
+                        <div className={`text-xs font-medium py-1 rounded flex items-center ${
+                            examStatus.score.percentage >= 50
+                                ? 'text-green-700'
+                                : 'text-red-700'
+                        }`}>
+                            <Award size={12} className="mr-1" />
+                            Score: {examStatus.score.percentage}%
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex items-center justify-between mt-2">
                     {!isAvailable ? (
                         <div className="flex items-center text-xs font-medium px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
@@ -74,10 +172,22 @@ const ExamCard = ({ exam, hasAccess }) => {
                             Bientôt disponible
                         </div>
                     ) : hasAccess ? (
-                        <button className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-full flex items-center">
-                            Commencer
-                            <ChevronRight size={12} className="ml-1" />
-                        </button>
+                        examStatus.isCompleted ? (
+                            <button className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-full flex items-center">
+                                <FileText size={12} className="mr-1" />
+                                Voir résultats
+                            </button>
+                        ) : examStatus.inProgress ? (
+                            <button className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded-full flex items-center">
+                                <PlayCircle size={12} className="mr-1" />
+                                Continuer
+                            </button>
+                        ) : (
+                            <button className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-full flex items-center">
+                                Commencer
+                                <ChevronRight size={12} className="ml-1" />
+                            </button>
+                        )
                     ) : (
                         <button
                             onClick={(e) => {
@@ -102,7 +212,6 @@ const ExamCard = ({ exam, hasAccess }) => {
         </div>
     );
 };
-
 // Composant pour l'état vide ou erreur
 const EmptyStateMessage = ({ type, message, actionText, actionHandler, icon: Icon }) => (
     <div className="text-center py-16 px-4">
