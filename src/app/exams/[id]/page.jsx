@@ -2,7 +2,7 @@
 
 import {useState, useEffect} from 'react';
 import {useParams, useRouter} from 'next/navigation';
-import {useAuth} from '@/context/AuthContext';
+import {useTokenAuth} from '@/context/TokenAuthContext';
 import {useExam} from '@/context/ExamContext';
 import Link from 'next/link';
 import {
@@ -14,7 +14,19 @@ import ExamResult from "@/components/exam/ExamResult";
 
 export default function ExamDetailPage() {
     const router = useRouter();
-    const {user, loading: authLoading} = useAuth();
+    
+    // Safely get auth context
+    let user = null;
+    let authLoading = true;
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        authLoading = auth.loading;
+    } catch (error) {
+        console.warn('ExamDetailPage: TokenAuth context not available');
+    }
+    
     const {
         loading: examLoading,
         getExamById,

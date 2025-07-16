@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useTokenAuth } from '@/context/TokenAuthContext';
 import { useExam } from '@/context/ExamContext'; // Import useExam context
 import Link from 'next/link';
 import supabase from "@/lib/supabase";
@@ -237,7 +237,21 @@ const EmptyStateMessage = ({ type, message, actionText, actionHandler, icon: Ico
 
 export default function ExamsPage() {
     const router = useRouter();
-    const { user, profile, loading: authLoading } = useAuth();
+    
+    // Safely get auth context
+    let user = null;
+    let profile = null;
+    let authLoading = true;
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        profile = auth.profile;
+        authLoading = auth.loading;
+    } catch (error) {
+        console.warn('ExamsPage: TokenAuth context not available');
+    }
+    
     const [exams, setExams] = useState([]);
     const [hasAccessToAllExams, setHasAccessToAllExams] = useState(false);
     const [loadingData, setLoadingData] = useState(false);
@@ -245,7 +259,7 @@ export default function ExamsPage() {
     const [error, setError] = useState(null);
     const [loadingTimeout, setLoadingTimeout] = useState(null);
     const [lastValidPayment, setLastValidPayment] = useState(null);
-    const [noSubjectsForBacSeries, setNoSubjectsForBacSeries] = useState(false);
+    const [noSubjectsForConcoursType, setNoSubjectsForConcoursType] = useState(false);
 
     // Prix fixe pour tous les examens
     const GLOBAL_ACCESS_PRICE = 200;
@@ -258,7 +272,7 @@ export default function ExamsPage() {
     // Redirection si non connecté
     useEffect(() => {
         if (!authLoading && !user) {
-            router.push('/auth/login');
+            router.push('/');
         }
     }, [user, authLoading, router]);
 
@@ -290,7 +304,7 @@ export default function ExamsPage() {
                 const { data: subjectsData, error: subjectsError } = await supabase
                     .from('concours_blanc.subjects')
                     .select('id, name, code')
-                    .contains('bac_series', [profile.bac_series]);
+                    .contains('concours_type', [profile.concours_type]);
 
                 if (subjectsError) throw subjectsError;
 
@@ -415,7 +429,7 @@ export default function ExamsPage() {
                         <div>
                             <h1 className="text-xl font-bold text-gray-800">Examens disponibles</h1>
                             <p className="text-sm text-gray-600 mt-1">
-                                Préparation aux examens pour BAC {profile?.bac_series}
+                                Préparation aux concours {profile?.concours_type === 'ingenieur' ? 'd\'Ingénieur' : 'de Médecine'}
                             </p>
                         </div>
                         {hasAccessToAllExams && (
@@ -430,7 +444,7 @@ export default function ExamsPage() {
 
             <div className="container mx-auto px-4">
                 {/* Bannière d'accès premium ou message d'accès actif */}
-                {!hasAccessToAllExams && !noSubjectsForBacSeries && exams.length > 0 ? (
+                {!hasAccessToAllExams && !noSubjectsForConcoursType && exams.length > 0 ? (
                     <div className="mb-4">
                         <div className="border border-orange-200 rounded-lg bg-orange-50 overflow-hidden">
                             <div className="p-3 flex items-center justify-between">
@@ -458,7 +472,7 @@ export default function ExamsPage() {
                             </div>
                         </div>
                     </div>
-                ) : lastValidPayment && !noSubjectsForBacSeries && (
+                ) : lastValidPayment && !noSubjectsForConcoursType && (
                     <div className="mb-4">
                         <div className="border border-green-200 rounded-lg bg-green-50 overflow-hidden">
                             <div className="p-3 flex items-center justify-between">
@@ -496,10 +510,10 @@ export default function ExamsPage() {
                 )}
 
                 {/* Message spécifique pour aucun sujet trouvé pour cette série BAC */}
-                {noSubjectsForBacSeries && (
+                {noSubjectsForConcoursType && (
                     <EmptyStateMessage
                         type="settings"
-                        message={`Aucun sujet n'est disponible pour la série BAC ${profile?.bac_series}`}
+                        message={`Aucun sujet n'est disponible pour le concours ${profile?.concours_type === 'ingenieur' ? 'd\'Ingénieur' : 'de Médecine'}`}
                         actionText="Modifier mes paramètres"
                         actionHandler={handleGoToSettings}
                         icon={BookX}
@@ -507,7 +521,7 @@ export default function ExamsPage() {
                 )}
 
                 {/* Examens vides (mais sujets existants) */}
-                {!noSubjectsForBacSeries && exams.length === 0 && !error && (
+                {!noSubjectsForConcoursType && exams.length === 0 && !error && (
                     <EmptyStateMessage
                         type="refresh"
                         message="Aucun examen n'est disponible pour le moment"
@@ -518,7 +532,7 @@ export default function ExamsPage() {
                 )}
 
                 {/* Liste des examens */}
-                {!noSubjectsForBacSeries && exams.length > 0 && (
+                {!noSubjectsForConcoursType && exams.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {exams.map((exam) => (
                             <ExamCard
@@ -531,12 +545,12 @@ export default function ExamsPage() {
                 )}
 
                 {/* Message informatif si pas d'examens mais que la série existe */}
-                {!noSubjectsForBacSeries && exams.length === 0 && !error && (
+                {!noSubjectsForConcoursType && exams.length === 0 && !error && (
                     <div className="mt-8 bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md flex">
                         <Info size={20} className="text-blue-500 mr-2 flex-shrink-0" />
                         <div>
                             <div className="text-sm text-blue-700">
-                                Nous préparons de nouveaux examens pour la série BAC {profile?.bac_series}.
+                                Nous préparons de nouveaux examens pour le concours {profile?.concours_type === 'ingenieur' ? 'd\'Ingénieur' : 'de Médecine'}.
                                 Revenez bientôt pour découvrir les nouveaux contenus.
                             </div>
                             <button
@@ -551,7 +565,7 @@ export default function ExamsPage() {
                 )}
 
                 {/* Bouton de déblocage en bas (sur mobile) - uniquement si l'utilisateur n'a pas d'accès */}
-                {!hasAccessToAllExams && exams.length > 1 && !noSubjectsForBacSeries && (
+                {!hasAccessToAllExams && exams.length > 1 && !noSubjectsForConcoursType && (
                     <div className="fixed bottom-16 left-0 right-0 px-3 py-2 bg-white border-t shadow-sm md:hidden z-10">
                         <button
                             onClick={handleGlobalPayment}
@@ -564,7 +578,7 @@ export default function ExamsPage() {
                 )}
 
                 {/* Bouton de déblocage en bas (sur desktop) - uniquement si l'utilisateur n'a pas d'accès */}
-                {!hasAccessToAllExams && exams.length > 0 && !noSubjectsForBacSeries && (
+                {!hasAccessToAllExams && exams.length > 0 && !noSubjectsForConcoursType && (
                     <div className="hidden md:block mt-8 text-center">
                         <button
                             onClick={handleGlobalPayment}

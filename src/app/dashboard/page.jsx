@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useTokenAuth } from '@/context/TokenAuthContext';
 import { useExam } from '@/context/ExamContext';
 import Link from 'next/link';
 import {
@@ -126,7 +126,19 @@ const InProgressCard = ({ exam, progress, onClick }) => {
 
 export default function DashboardPage() {
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
+    
+    // Safely get auth context
+    let user = null;
+    let authLoading = true;
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        authLoading = auth.loading;
+    } catch (error) {
+        console.warn('DashboardPage: TokenAuth context not available');
+    }
+    
     const { exams, loading: examsLoading, getExamById } = useExam();
 
     const [completedExams, setCompletedExams] = useState([]);

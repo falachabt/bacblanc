@@ -2,13 +2,24 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useTokenAuth } from '@/context/TokenAuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  
+  // Safely get auth context
+  let user = null;
+  let loading = true;
+  
+  try {
+    const auth = useTokenAuth();
+    user = auth.user;
+    loading = auth.loading;
+  } catch (error) {
+    console.warn('HomePage: TokenAuth context not available');
+  }
 
   // Rediriger si déjà connecté
   useEffect(() => {
@@ -37,10 +48,10 @@ export default function HomePage() {
         </h1>
 
         <p className="text-xl text-center mb-8">
-          Bac Blanc | Elearn Prepa
+          Concours Blanc | Elearn Prepa
         </p>
 
-        <Link href="/bac-selection" className="bg-white text-green-600 px-6 py-3 rounded-lg text-lg font-semibold transition-transform transform hover:scale-105 shadow-lg">
+        <Link href="/concours-selection" className="bg-white text-green-600 px-6 py-3 rounded-lg text-lg font-semibold transition-transform transform hover:scale-105 shadow-lg">
           Commencer
         </Link>
       </div>

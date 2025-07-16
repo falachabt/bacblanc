@@ -2,33 +2,33 @@
 
 export const metadata = {
     title: {
-        default: 'Bac Blanc | Elearn Prepa',
+        default: 'Concours Blanc | Elearn Prepa',
         template: '%s | Elearn Prepa',
     },
-    description: 'Plateforme dédiée aux administrateur et staff de Elearn Prepa pour gérer les utilisateurs et les données de la plateforme.',
-    // keywords: ['influenceur', 'code promo', 'statistiques', 'partenariat', 'affiliation'],
+    description: 'Plateforme dédiée aux concours blancs Elearn Prepa pour préparer les concours d\'ingénieur et de médecine.',
+    // keywords: ['concours blanc', 'ingénieur', 'médecine', 'préparation', 'examens'],
     authors: [{ name: 'Elearn Prepa', url: 'https://elearnbac.ezadrive.com' }],
     creator: 'Elearn Prepa',
     openGraph: {
         type: 'website',
         locale: 'fr_FR',
         url: 'https://elearnbac.ezadrive.com',
-        title: 'Elearn Prepa',
-        description: 'Plateforme dédiée aux administrateur et staff de Elearn Prepa pour gérer les utilisateurs et les données de la plateforme.',
+        title: 'Concours Blanc | Elearn Prepa',
+        description: 'Plateforme dédiée aux concours blancs Elearn Prepa pour préparer les concours d\'ingénieur et de médecine.',
         siteName: 'Elearn Prepa',
         images: [
             {
                 url: '/icon.png',
                 width: 1200,
                 height: 630,
-                alt: 'Elearn Prepa - Plateforme de gestion',
+                alt: 'Elearn Prepa - Plateforme de concours blancs',
             },
         ],
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Elearn Prepa',
-        description: 'Elearn Prepa - Plateforme de gestion',
+        title: 'Concours Blanc | Elearn Prepa',
+        description: 'Elearn Prepa - Plateforme de concours blancs',
         images: ['/Icon.jpg'],
         creator: '@elearnprepa',
     },

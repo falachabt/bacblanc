@@ -3,13 +3,26 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { Home, Book, LogIn, LogOut } from 'lucide-react';
+import { useTokenAuth } from '@/context/TokenAuthContext';
+import { Home, Book, LogOut } from 'lucide-react';
 import Image from 'next/image';
 
 export default function Navbar() {
     const pathname = usePathname();
-    const { user, logout } = useAuth();
+    
+    // Safely use the hook with error handling
+    let user = null;
+    let logout = () => {};
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        logout = auth.logout;
+    } catch (error) {
+        // Component is being used outside of provider context
+        // This can happen during SSR or in error scenarios
+        console.warn('Navbar: TokenAuth context not available');
+    }
 
     return (
         <>
@@ -61,19 +74,7 @@ export default function Navbar() {
                                             </button>
                                         </li>
                                     </>
-                                ) : (
-                                    <>
-                                        <li>
-                                            <Link
-                                                href="/auth/login"
-                                                className="bg-white text-green-600 px-4 py-2 rounded-full hover:bg-gray-100 transition flex items-center"
-                                            >
-                                                <LogIn className="mr-2" size={20} />
-                                                Connexion
-                                            </Link>
-                                        </li>
-                                    </>
-                                )}
+                                ) : null}
                             </ul>
                         </nav>
                     </div>
@@ -110,17 +111,7 @@ export default function Navbar() {
                             <span className="text-xs mt-1">Quitter</span>
                         </button>
                     </div>
-                ) : (
-                    <div className="flex justify-center py-3">
-                        <Link
-                            href="/auth/login"
-                            className="bg-green-600 text-white px-6 py-2 rounded-full flex items-center"
-                        >
-                            <LogIn className="mr-2" size={20} />
-                            <span>Connexion</span>
-                        </Link>
-                    </div>
-                )}
+                ) : null}
             </div>
 
             {/* Padding minimal pour compenser uniquement l'en-tête fixe */}
