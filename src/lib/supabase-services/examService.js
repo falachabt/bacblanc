@@ -4,7 +4,7 @@ export const examService = {
     // Récupérer tous les examens
     async getExams() {
         const {data, error} = await supabase
-            .from('concours_blanc.exams')
+            .from('exams')
             .select(`
         *,
         subject:subject_id (id, name, code),
@@ -21,7 +21,7 @@ export const examService = {
     async getExamById(examId) {
         console.log("Exam ID:", examId);
         const {data, error} = await supabase
-            .from('concours_blanc.exams')
+            .from('exams')
             .select(`
         *,
         subject:subject_id (id, name, code), 
@@ -39,7 +39,7 @@ export const examService = {
     // Vérifier si l'examen est terminé
     async isExamCompleted(userId, examId) {
         const {data, error} = await supabase
-            .from('concours_blanc.exam_attempts')
+            .from('exam_attempts')
             .select('id')
             .eq('user_id', userId)
             .eq('exam_id', examId)
@@ -53,7 +53,7 @@ export const examService = {
     // Récupérer un examen en cours
     async getExamProgress(userId, examId) {
         const {data, error} = await supabase
-            .from('concours_blanc.exam_attempts')
+            .from('exam_attempts')
             .select('*')
             .eq('user_id', userId)
             .eq('exam_id', examId)
@@ -67,7 +67,7 @@ export const examService = {
     // Démarrer un nouvel examen
     async startExam(userId, examId, questionOrder) {
         const {data, error} = await supabase
-            .from('concours_blanc.exam_attempts')
+            .from('exam_attempts')
             .insert({
                 user_id: userId,
                 exam_id: examId,
@@ -86,7 +86,7 @@ export const examService = {
         console.log("params ", userId, examId, answers);
         // Vérifier s'il existe une tentative en cours
         const {data: attempt, error: attemptError} = await supabase
-            .from('concours_blanc.exam_attempts')
+            .from('exam_attempts')
             .select('id')
             .eq('user_id', userId)
             .eq('exam_id', examId)
@@ -98,7 +98,7 @@ export const examService = {
         if (attempt) {
             // Mettre à jour la tentative existante
             const {data, error} = await supabase
-                .from('concours_blanc.exam_attempts')
+                .from('exam_attempts')
                 .update({answers, last_open_question, timeLeft, timestamp})
                 .eq('id', attempt.id)
                 .select()
@@ -115,7 +115,7 @@ export const examService = {
     // Terminer un examen
     async completeExam(userId, examId, score, answers) {
         const {data, error} = await supabase
-            .from('concours_blanc.exam_attempts')
+            .from('exam_attempts')
             .update({
                 completed_at: new Date(),
                 score,
@@ -134,7 +134,7 @@ export const examService = {
     // Récupérer les résultats d'un examen
     async getExamResult(userId, examId) {
         const {data, error} = await supabase
-            .from('concours_blanc.exam_attempts')
+            .from('exam_attempts')
             .select('*')
             .eq('user_id', userId)
             .eq('exam_id', examId)
@@ -150,7 +150,7 @@ export const examService = {
     // Récupérer tous les examens complétés
     async getCompletedExams(userId) {
         const {data, error} = await supabase
-            .from('concours_blanc.exam_attempts')
+            .from('exam_attempts')
             .select(`
         *,
         exam:exam_id (
@@ -170,7 +170,7 @@ export const examService = {
     // Récupérer tous les examens en cours
     async getExamsInProgress(userId) {
         const {data, error} = await supabase
-            .from('concours_blanc.exam_attempts')
+            .from('exam_attempts')
             .select(`
         *,
         exam:exam_id (

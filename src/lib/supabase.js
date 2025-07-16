@@ -9,27 +9,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Les variables d\'environnement Supabase ne sont pas définies.');
 }
 
-// Configuration pour utiliser le schéma concours_blanc par défaut
-const supabaseOptions = {
-  db: {
-    schema: 'concours_blanc'
-  }
-};
-
-// Création du client Supabase avec le schéma concours_blanc
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, supabaseOptions);
+// Création du client Supabase avec la configuration par défaut
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Export d'une fonction pour créer un client Supabase avec des options personnalisées
 export const createCustomClient = (options) => {
-  const mergedOptions = {
-    ...supabaseOptions,
-    ...options,
-    db: {
-      ...supabaseOptions.db,
-      ...(options?.db || {})
-    }
-  };
-  return createClient(supabaseUrl, supabaseAnonKey, mergedOptions);
+  return createClient(supabaseUrl, supabaseAnonKey, options);
 };
 
 export default supabase;

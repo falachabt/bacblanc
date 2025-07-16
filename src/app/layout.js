@@ -2,7 +2,7 @@
 // 'use client';
 "use client";
 import './globals.scss';
-import {AuthProvider} from '@/context/AuthContext';
+import {TokenAuthProvider} from '@/context/TokenAuthContext';
 import {usePathname} from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -12,13 +12,13 @@ export default function RootLayout({children}) {
     const pathname = usePathname();
 
     // Pages où on ne veut pas afficher le Navbar et Footer
-    const noLayoutPages = ['/', '/bac-selection', '/auth/login', '/auth/register', '/forgot-password', '/reset-password'];
+    const noLayoutPages = ['/', '/concours-selection'];
     const showLayout = !noLayoutPages.includes(pathname);
 
     return (
         <html lang="fr">
         <body className="flex flex-col min-h-screen">
-        <AuthProvider>
+        <TokenAuthProvider>
             <ExamProvider>
 
                 {showLayout && <Navbar/>}
@@ -27,7 +27,7 @@ export default function RootLayout({children}) {
                 </main>
                 {showLayout && <Footer/>}
             </ExamProvider>
-        </AuthProvider>
+        </TokenAuthProvider>
         </body>
         </html>
     );

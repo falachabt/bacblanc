@@ -29,9 +29,9 @@ export function AuthProvider({ children }) {
                 setProfile(null);
 
                 // Only redirect if on protected routes
-                const publicRoutes = ["/", "/bac-selection", "/auth/register", "/auth/login"];
+                const publicRoutes = ["/", "/concours-selection"];
                 if (!publicRoutes.includes(pathname)) {
-                    router.push('/auth/login');
+                    router.push('/');
                 }
             }
         } catch (error) {
@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
         try {
             // Check if profile exists
             const { data: existingProfile, error: fetchError } = await supabase
-                .from('concours_blanc.users_profiles')
+                .from('users_profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
@@ -63,14 +63,14 @@ export function AuthProvider({ children }) {
 
             const metaData = userData.user.user_metadata || {};
             const fullName = metaData.full_name || 'User';
-            const bacSeries = metaData.bac_series || '';
+            const concoursType = metaData.concours_type || '';
 
             const { data: newProfile, error: insertError } = await supabase
-                .from('concours_blanc.users_profiles')
+                .from('users_profiles')
                 .insert([{
                     id: userId,
                     full_name: fullName,
-                    bac_series: bacSeries,
+                    concours_type: concoursType,
                     created_at: new Date().toISOString(),
                 }])
                 .select()
@@ -120,12 +120,12 @@ export function AuthProvider({ children }) {
         };
     }, [fetchUserAndProfile]); // Only depend on fetchUserAndProfile which is memoized
 
-    const register = async (identifier, password, fullName, bacSeries, identifierType = 'email') => {
+    const register = async (identifier, password, fullName, concoursType, identifierType = 'email') => {
         try {
             // Préparation des données utilisateur
             const userData = {
                 full_name: fullName,
-                bac_series: bacSeries,
+                concours_type: concoursType,
             };
 
             // Déterminer si on utilise email ou téléphone pour l'authentification
@@ -205,14 +205,14 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const updateBacSeries = async (bacSeries) => {
+    const updateConcoursType = async (concoursType) => {
         try {
             setLoading(true);
             if (!user) throw new Error("No user logged in.");
 
             const { data, error } = await supabase
-                .from('concours_blanc.users_profiles')
-                .update({ bac_series: bacSeries })
+                .from('users_profiles')
+                .update({ concours_type: concoursType })
                 .eq('id', user.id)
                 .select()
                 .single();
@@ -222,7 +222,7 @@ export function AuthProvider({ children }) {
             setProfile(data);
             return { data, error: null };
         } catch (error) {
-            console.error("Error updating BAC series:", error.message);
+            console.error("Error updating concours type:", error.message);
             return { data: null, error };
         } finally {
             setLoading(false);
@@ -235,7 +235,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
-        updateBacSeries,
+        updateConcoursType,
         loading,
     };
 
