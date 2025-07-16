@@ -6,7 +6,20 @@ import { useTokenAuth } from '@/context/TokenAuthContext';
 import supabase from "@/lib/supabase";
 
 export function useProfile() {
-    const { user, profile, setProfile } = useTokenAuth();
+    // Safely get auth context
+    let user = null;
+    let profile = null;
+    let setProfile = () => {};
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        profile = auth.profile;
+        setProfile = auth.setProfile || (() => {}); // setProfile might not be available
+    } catch (error) {
+        console.warn('useProfile: TokenAuth context not available');
+    }
+    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 

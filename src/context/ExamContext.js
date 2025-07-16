@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useState, useEffect, useContext } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useTokenAuth } from '@/context/TokenAuthContext';
 import { examService } from '@/lib/supabase-services/examService';
 import { convertDurationToSeconds, calculateExamResults } from '@/utils/examUtils';
 
@@ -10,7 +10,16 @@ import { convertDurationToSeconds, calculateExamResults } from '@/utils/examUtil
 const ExamContext = createContext(null);
 
 export function ExamProvider({ children }) {
-    const { user } = useAuth();
+    // Safely get auth context
+    let user = null;
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+    } catch (error) {
+        console.warn('ExamProvider: TokenAuth context not available');
+    }
+    
     const [exams, setExams] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

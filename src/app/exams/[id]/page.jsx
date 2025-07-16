@@ -14,7 +14,19 @@ import ExamResult from "@/components/exam/ExamResult";
 
 export default function ExamDetailPage() {
     const router = useRouter();
-    const {user, loading: authLoading} = useTokenAuth();
+    
+    // Safely get auth context
+    let user = null;
+    let authLoading = true;
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        authLoading = auth.loading;
+    } catch (error) {
+        console.warn('ExamDetailPage: TokenAuth context not available');
+    }
+    
     const {
         loading: examLoading,
         getExamById,

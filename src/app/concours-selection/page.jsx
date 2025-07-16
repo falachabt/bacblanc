@@ -7,7 +7,23 @@ import Image from "next/image";
 
 export default function ConcoursSelectionPage() {
     const router = useRouter();
-    const { user, profile, loading, updateConcoursType } = useTokenAuth();
+    
+    // Safely get auth context
+    let user = null;
+    let profile = null;
+    let loading = true;
+    let updateConcoursType = async () => ({ data: null, error: 'Not available' });
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        profile = auth.profile;
+        loading = auth.loading;
+        updateConcoursType = auth.updateConcoursType;
+    } catch (error) {
+        console.warn('ConcoursSelectionPage: TokenAuth context not available');
+    }
+    
     const [selectedType, setSelectedType] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 

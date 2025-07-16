@@ -196,7 +196,17 @@ export default function PaymentPageContent() {
     const isGlobalAccess = searchParams.get('globalAccess') === 'true';
     const paymentReference = searchParams.get('reference'); // Utilisé pour vérifier un paiement existant
 
-    const {user, loading} = useTokenAuth();
+    // Safely get auth context
+    let user = null;
+    let loading = true;
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        loading = auth.loading;
+    } catch (error) {
+        console.warn('Payment: TokenAuth context not available');
+    }
 
     const [exam, setExam] = useState(null);
     const [loadingData, setLoadingData] = useState(true);

@@ -8,7 +8,18 @@ import Link from 'next/link';
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, loading } = useTokenAuth();
+  
+  // Safely get auth context
+  let user = null;
+  let loading = true;
+  
+  try {
+    const auth = useTokenAuth();
+    user = auth.user;
+    loading = auth.loading;
+  } catch (error) {
+    console.warn('HomePage: TokenAuth context not available');
+  }
 
   // Rediriger si déjà connecté
   useEffect(() => {
