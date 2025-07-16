@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
         try {
             // Check if profile exists
             const { data: existingProfile, error: fetchError } = await supabase
-                .from('users_profiles')
+                .from('concours_blanc.users_profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
@@ -66,7 +66,7 @@ export function AuthProvider({ children }) {
             const bacSeries = metaData.bac_series || '';
 
             const { data: newProfile, error: insertError } = await supabase
-                .from('users_profiles')
+                .from('concours_blanc.users_profiles')
                 .insert([{
                     id: userId,
                     full_name: fullName,
@@ -211,7 +211,7 @@ export function AuthProvider({ children }) {
             if (!user) throw new Error("No user logged in.");
 
             const { data, error } = await supabase
-                .from('users_profiles')
+                .from('concours_blanc.users_profiles')
                 .update({ bac_series: bacSeries })
                 .eq('id', user.id)
                 .select()

@@ -288,7 +288,7 @@ export default function ExamsPage() {
             try {
                 // 1. D'abord, obtenir tous les sujets (subjects) qui correspondent à la série BAC de l'utilisateur
                 const { data: subjectsData, error: subjectsError } = await supabase
-                    .from('subjects')
+                    .from('concours_blanc.subjects')
                     .select('id, name, code')
                     .contains('bac_series', [profile.bac_series]);
 
@@ -308,7 +308,7 @@ export default function ExamsPage() {
 
                 // 2. Ensuite, charger les examens pour ces sujets
                 const { data: examData, error: examError } = await supabase
-                    .from('exams')
+                    .from('concours_blanc.exams')
                     .select('*, subject:subject_id(name, code)')
                     .in('subject_id', subjectIds)
                     .order('available_at', { ascending: true });
@@ -317,7 +317,7 @@ export default function ExamsPage() {
 
                 // 3. Vérifier si l'utilisateur a un paiement global valide
                 const { data: paymentData, error: paymentError } = await supabase
-                    .from('payments')
+                    .from('concours_blanc.payments')
                     .select('*')
                     .eq('user_id', user.id)
                     .eq('status', 'complete')  // NotchPay utilise 'complete' et non 'completed'

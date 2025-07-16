@@ -266,7 +266,7 @@ export default function PaymentPageContent() {
 
         try {
             const {data, error} = await supabase
-                .from('payments')
+                .from('concours_blanc.payments')
                 .select('*')
                 .eq('user_id', user.id)
                 .eq('status', 'complete')
@@ -296,7 +296,7 @@ export default function PaymentPageContent() {
             if (paymentReference) {
                 try {
                     const {data, error} = await supabase
-                        .from('payments')
+                        .from('concours_blanc.payments')
                         .select('*')
                         .eq('reference', paymentReference)
                         .single();
@@ -323,7 +323,7 @@ export default function PaymentPageContent() {
             if (user) {
                 try {
                     const {data: existingPayments, error: paymentsError} = await supabase
-                        .from('payments')
+                        .from('concours_blanc.payments')
                         .select('*')
                         .eq('user_id', user.id)
                         .in('status', ['pending', 'processing'])
@@ -372,7 +372,7 @@ export default function PaymentPageContent() {
 
             try {
                 const {data, error} = await supabase
-                    .from('exams')
+                    .from('concours_blanc.exams')
                     .select('*, subject:subject_id(name, code)')
                     .eq('id', examId)
                     .single();
@@ -399,7 +399,7 @@ export default function PaymentPageContent() {
 
         try {
             const {data, error} = await supabase
-                .from('payments')
+                .from('concours_blanc.payments')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('created_at', {ascending: false})
@@ -473,7 +473,7 @@ export default function PaymentPageContent() {
         try {
             // Récupérer tous les paiements en attente/en cours
             const {data: pendingPayments, error} = await supabase
-                .from('payments')
+                .from('concours_blanc.payments')
                 .select('*')
                 .eq('user_id', user.id)
                 .in('status', ['pending', 'processing'])
@@ -553,7 +553,7 @@ export default function PaymentPageContent() {
 
         try {
             const {error} = await supabase
-                .from('payments')
+                .from('concours_blanc.payments')
                 .update({status: status})
                 .eq('reference', reference);
 
@@ -687,7 +687,7 @@ export default function PaymentPageContent() {
     const createPaymentRecord = async (examId, reference, status, amount) => {
         try {
             const {data, error} = await supabase
-                .from('payments')
+                .from('concours_blanc.payments')
                 .insert([{
                     user_id: user.id,
                     reference,
