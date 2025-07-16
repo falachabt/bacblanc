@@ -9,7 +9,20 @@ import Image from 'next/image';
 
 export default function Navbar() {
     const pathname = usePathname();
-    const { user, logout } = useTokenAuth();
+    
+    // Safely use the hook with error handling
+    let user = null;
+    let logout = () => {};
+    
+    try {
+        const auth = useTokenAuth();
+        user = auth.user;
+        logout = auth.logout;
+    } catch (error) {
+        // Component is being used outside of provider context
+        // This can happen during SSR or in error scenarios
+        console.warn('Navbar: TokenAuth context not available');
+    }
 
     return (
         <>

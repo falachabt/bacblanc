@@ -2,7 +2,7 @@
 
 import {useState, useEffect} from 'react';
 import {useParams, useRouter} from 'next/navigation';
-import {useAuth} from '@/context/AuthContext';
+import {useTokenAuth} from '@/context/TokenAuthContext';
 import {useExam} from '@/context/ExamContext';
 import Link from 'next/link';
 import {
@@ -14,7 +14,7 @@ import ExamResult from "@/components/exam/ExamResult";
 
 export default function ExamDetailPage() {
     const router = useRouter();
-    const {user, loading: authLoading} = useAuth();
+    const {user, loading: authLoading} = useTokenAuth();
     const {
         loading: examLoading,
         getExamById,

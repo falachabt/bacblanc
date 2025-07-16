@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useTokenAuth } from '@/context/TokenAuthContext';
 import { useExam } from '@/context/ExamContext';
 import Link from 'next/link';
 import {
@@ -126,7 +126,7 @@ const InProgressCard = ({ exam, progress, onClick }) => {
 
 export default function DashboardPage() {
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading } = useTokenAuth();
     const { exams, loading: examsLoading, getExamById } = useExam();
 
     const [completedExams, setCompletedExams] = useState([]);

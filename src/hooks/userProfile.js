@@ -2,11 +2,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useTokenAuth } from '@/context/TokenAuthContext';
 import supabase from "@/lib/supabase";
 
 export function useProfile() {
-    const { user, profile, setProfile } = useAuth();
+    const { user, profile, setProfile } = useTokenAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -22,9 +22,9 @@ export function useProfile() {
 
         try {
             const { data, error: updateError } = await supabase
-                .from('concours_blanc.users_profiles')
+                .from('users_profiles')
                 .update(updatedData)
-                .eq('id', user.id)
+                .eq('external_id', user.id)
                 .select()
                 .single();
 
@@ -42,9 +42,9 @@ export function useProfile() {
         }
     };
 
-    // Mettre à jour spécifiquement la série BAC
-    const updateBacSeries = async (bacSeries) => {
-        return await updateProfile({ bac_series: bacSeries });
+    // Mettre à jour spécifiquement le type de concours
+    const updateConcoursType = async (concoursType) => {
+        return await updateProfile({ concours_type: concoursType });
     };
 
     return {
@@ -52,6 +52,6 @@ export function useProfile() {
         loading,
         error,
         updateProfile,
-        updateBacSeries
+        updateConcoursType
     };
 }

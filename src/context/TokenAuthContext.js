@@ -14,12 +14,24 @@ export function TokenAuthProvider({ children }) {
 
     // Fonction pour récupérer le token depuis les headers
     const getTokenFromHeaders = useCallback(() => {
+        // Only run on client side
+        if (typeof window === 'undefined') return null;
+        
         // Dans un environnement React Native WebView, le token sera passé via une méthode spécifique
         // Pour le moment, on simule avec localStorage pour les tests locaux
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('authToken') || window.authToken;
+        try {
+            // Check if there's a token in localStorage, if not, set a test token for development
+            let token = localStorage.getItem('authToken') || window.authToken;
+            if (!token) {
+                // Set a test token for development purposes
+                token = 'test_token_12345678901234567890';
+                localStorage.setItem('authToken', token);
+            }
+            return token;
+        } catch (error) {
+            console.error('Error accessing localStorage:', error);
+            return null;
         }
-        return null;
     }, []);
 
     // Fonction pour appeler le serveur externe avec le token
@@ -86,6 +98,12 @@ export function TokenAuthProvider({ children }) {
 
     // Fonction principale d'authentification par token
     const authenticateWithToken = useCallback(async () => {
+        // Skip on server side
+        if (typeof window === 'undefined') {
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
             const token = getTokenFromHeaders();
@@ -134,7 +152,12 @@ export function TokenAuthProvider({ children }) {
 
     // Initialisation de l'authentification
     useEffect(() => {
-        authenticateWithToken();
+        // Only run on client side
+        if (typeof window !== 'undefined') {
+            authenticateWithToken();
+        } else {
+            setLoading(false);
+        }
     }, [authenticateWithToken]);
 
     // Fonction pour mettre à jour le type de concours
@@ -192,5 +215,20 @@ export function TokenAuthProvider({ children }) {
 }
 
 export function useTokenAuth() {
-    return useContext(TokenAuthContext);
+    const context = useContext(TokenAuthContext);
+    if (context === undefined) {
+        // Return default values instead of throwing an error during SSR
+        if (typeof window === 'undefined') {
+            return {
+                user: null,
+                profile: null,
+                updateConcoursType: async () => ({ data: null, error: 'Not available during SSR' }),
+                logout: () => {},
+                loading: true,
+                authenticateWithToken: () => {},
+            };
+        }
+        throw new Error('useTokenAuth must be used within a TokenAuthProvider');
+    }
+    return context;
 }
