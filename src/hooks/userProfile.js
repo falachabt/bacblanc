@@ -22,7 +22,7 @@ export function useProfile() {
 
         try {
             const { data, error: updateError } = await supabase
-                .from('users_profiles')
+                .from('concours_blanc.users_profiles')
                 .update(updatedData)
                 .eq('id', user.id)
                 .select()
