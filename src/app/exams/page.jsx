@@ -40,12 +40,12 @@ const ExamCard = ({ exam, hasAccess }) => {
                     // Récupérer le score si l'examen est complété
                     const result = await getExistingResult(exam.id);
                     if (result) {
-                        // Use the score and total questions count for display
+                        // Use the stored values from the database
                         score = {
-                            score: result.score,
-                            totalQuestions: result.totalQuestions || exam.questions?.length || 0,
-                            totalPoints: result.total || exam.questions?.reduce((sum, a) => sum + (parseFloat(a.points) || 1), 0) || 100,
-                            percentage: result.percentage || Math.round((result.score / (result.total || exam.questions?.reduce((sum, a) => sum + (parseFloat(a.points) || 1), 0) || 100)) * 100)
+                            score: result.score || 0,
+                            totalQuestions: result.total_questions || 0,
+                            totalPoints: result.total_points || 0,
+                            percentage: result.percentage || 0
                         };
                     }
                 }

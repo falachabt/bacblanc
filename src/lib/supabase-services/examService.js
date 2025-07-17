@@ -134,13 +134,16 @@ export const examService = {
     },
 
     // Terminer un examen
-    async completeExam(userId, examId, score, answers) {
+    async completeExam(userId, examId, examResults) {
         const {data, error} = await supabase
             .from('exam_attempts')
             .update({
                 completed_at: new Date(),
-                score,
-                answers
+                score: examResults.score,
+                total_points: examResults.total,
+                total_questions: examResults.totalQuestions,
+                percentage: examResults.percentage,
+                answers: examResults.answers || {}
             })
             .eq('user_id', userId)
             .eq('exam_id', examId)

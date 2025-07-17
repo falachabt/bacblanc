@@ -208,8 +208,14 @@ export function ExamProvider({ children }) {
             // Calculate results
             const results = calculateExamResults(exam, answers);
 
+            // Add answers to results for storage
+            const resultsWithAnswers = {
+                ...results,
+                answers
+            };
+
             // Save to database
-            await examService.completeExam(user.id, examId, results.score, answers);
+            await examService.completeExam(user.id, examId, resultsWithAnswers);
 
             // Clear randomized questions
             setRandomizedQuestions(prev => {
