@@ -27,11 +27,11 @@ export function TokenAuthProvider({ children }) {
         }
     }, []);
 
-    // Fonction pour appeler le serveur externe avec le token
+    // Fonction pour appeler le serveur externe avec le token via proxy
     const fetchUserFromExternalAPI = useCallback(async (token) => {
         try {
-            // Call elearnprepa.com API to get user info
-            const response = await fetch('https://elearnprepa.com/api/external/user-info', {
+            // Call our proxy API instead of direct external API to avoid CORS issues
+            const response = await fetch('/api/elearn/user-info', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

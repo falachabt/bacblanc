@@ -116,7 +116,7 @@ export default function ElearnAdminLogin({ onAuth }) {
                             onChange={handleInputChange}
                             required
                             disabled={loading}
-                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 placeholder-gray-500"
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 placeholder-gray-400 bg-white"
                             placeholder="Enter your email"
                         />
                     </div>
@@ -136,7 +136,7 @@ export default function ElearnAdminLogin({ onAuth }) {
                             onChange={handleInputChange}
                             required
                             disabled={loading}
-                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 placeholder-gray-500"
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 placeholder-gray-400 bg-white"
                             placeholder="Enter your password"
                         />
                     </div>
