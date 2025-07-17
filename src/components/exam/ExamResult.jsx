@@ -8,7 +8,7 @@ import {
     CheckCircle, XCircle, AlertCircle, Award, ArrowLeft,
     ChevronDown, ChevronUp, Eye, Clock, Book
 } from 'lucide-react';
-import { formatDate } from '@/utils/examUtils';
+import { formatDate, calculatePartialScore, isAnswerCorrect } from '@/utils/examUtils';
 
 export default function ExamResult() {
     const router = useRouter();
@@ -82,15 +82,16 @@ export default function ExamResult() {
         let correctCount = 0;
         let incorrectCount = 0;
         let unansweredCount = 0;
+        let partialCount = 0;
         let questionDetails = [];
 
         exam.questions.forEach(question => {
             const userAnswer = results.answers[question.id];
             const points = parseFloat(question.points) || 1;
 
-            // Convertir correct_answer en format utilisable (gérer les chaînes JSON si nécessaire)
+            // Parse correct_answer if it's a JSON string
             let correct_answer = question.correct_answer;
-            if (typeof correct_answer === 'string' && correct_answer.startsWith('[')) {
+            if (typeof correct_answer === 'string' && (correct_answer.startsWith('[') || correct_answer.startsWith('{'))) {
                 try {
                     correct_answer = JSON.parse(correct_answer);
                 } catch (e) {
@@ -99,32 +100,23 @@ export default function ExamResult() {
             }
 
             let isCorrect = false;
+            let partialScore = 0;
             let status = 'unanswered';
 
-            if (!userAnswer) {
+            if (!userAnswer || (Array.isArray(userAnswer) && userAnswer.length === 0)) {
                 unansweredCount++;
                 status = 'unanswered';
             } else {
-                // Vérifier si la réponse est correcte selon le type de question
-                if (question.type === 'true-false') {
-                    isCorrect = userAnswer === correct_answer;
-                } else if (question.type === 'multiple') {
-                    // Pour les questions à choix multiples
-                    const correct_answerArray = Array.isArray(correct_answer) ? correct_answer : [correct_answer];
-                    const userAnswerArray = Array.isArray(userAnswer) ? userAnswer : [userAnswer];
-
-                    // Vérifier si les tableaux ont la même longueur et les mêmes éléments
-                    isCorrect =
-                        correct_answerArray.length === userAnswerArray.length &&
-                        correct_answerArray.every(answer => userAnswerArray.includes(answer));
-                } else {
-                    // Pour les questions à choix unique
-                    isCorrect = userAnswer === correct_answer;
-                }
+                // Calculate partial score and determine correctness
+                partialScore = calculatePartialScore(question, userAnswer);
+                isCorrect = partialScore === 1;
 
                 if (isCorrect) {
                     correctCount++;
                     status = 'correct';
+                } else if (partialScore > 0) {
+                    partialCount++;
+                    status = 'partial';
                 } else {
                     incorrectCount++;
                     status = 'incorrect';
@@ -137,6 +129,7 @@ export default function ExamResult() {
                 userAnswer,
                 correct_answer,
                 isCorrect,
+                partialScore,
                 status,
                 points
             });
@@ -151,6 +144,7 @@ export default function ExamResult() {
             percentage,
             correctCount,
             incorrectCount,
+            partialCount,
             unansweredCount
         });
 
@@ -160,6 +154,7 @@ export default function ExamResult() {
             percentage,
             correctCount,
             incorrectCount,
+            partialCount,
             unansweredCount,
             questionDetails,
             totalQuestions: exam.questions.length
@@ -325,6 +320,24 @@ export default function ExamResult() {
                                 </div>
                             </div>
 
+                            {/* Add partial credit indicator if there are partial answers */}
+                            {calculatedResults.partialCount > 0 && (
+                                <div className="bg-gray-50 rounded-lg p-4 flex items-center">
+                                    <div className="rounded-full bg-yellow-100 p-2 mr-3">
+                                        <CheckCircle className="h-6 w-6 text-yellow-600" />
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-500">Crédit partiel</div>
+                                        <div className="text-lg font-semibold">
+                                            {calculatedResults.partialCount} / {calculatedResults.totalQuestions}
+                                            <span className="text-sm text-gray-500 ml-1">
+                                                ({Math.round((calculatedResults.partialCount / calculatedResults.totalQuestions) * 100)}%)
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="bg-gray-50 rounded-lg p-4 flex items-center">
                                 <div className="rounded-full bg-gray-100 p-2 mr-3">
                                     <AlertCircle className="h-6 w-6 text-gray-600" />
@@ -414,6 +427,12 @@ export default function ExamResult() {
                                                             Correct
                                                         </span>
                                                     )}
+                                                    {status === 'partial' && (
+                                                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full flex items-center">
+                                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                                            Partiel
+                                                        </span>
+                                                    )}
                                                     {status === 'incorrect' && (
                                                         <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full flex items-center">
                                                             <XCircle className="h-3 w-3 mr-1" />
@@ -444,6 +463,11 @@ export default function ExamResult() {
                                                         question.type === 'single' ? 'Choix unique' :
                                                             'Vrai ou Faux'} •
                                                         Points: {question.points}
+                                                        {detail.partialScore !== undefined && detail.partialScore < 1 && detail.partialScore > 0 && (
+                                                            <span className="text-yellow-600 ml-2">
+                                                                • Score partiel: {Math.round(detail.partialScore * 100)}%
+                                                            </span>
+                                                        )}
                                                     </p>
 
                                                     {/* Afficher les options pour les questions à choix */}

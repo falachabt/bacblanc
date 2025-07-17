@@ -215,30 +215,96 @@ export function saveExamResult(examId, resultData) {
 export function isAnswerCorrect(question, userAnswer) {
     if (!userAnswer) return false;
 
+    // Parse correct_answer if it's a JSON string
+    let correct_answer = question.correct_answer;
+    if (typeof correct_answer === 'string' && (correct_answer.startsWith('[') || correct_answer.startsWith('{'))) {
+        try {
+            correct_answer = JSON.parse(correct_answer);
+        } catch (e) {
+            console.error("Error parsing correct_answer:", e);
+        }
+    }
+
     switch (question.type) {
         case 'multiple':
             // For multiple-choice, check if all correct answers are selected and no incorrect ones
-            const correctSet = new Set(question.correct_answers);
-            const userSet = new Set(userAnswer);
+            const correctSet = new Set(Array.isArray(correct_answer) ? correct_answer : [correct_answer]);
+            const userSet = new Set(Array.isArray(userAnswer) ? userAnswer : [userAnswer]);
 
-            return correctSet.size == userSet.size &&
+            return correctSet.size === userSet.size &&
                 [...correctSet].every(value => userSet.has(value));
 
         case 'single':
             // For single-choice, direct comparison
-            return userAnswer == question.correct_answer;
+            return userAnswer === correct_answer;
 
         case 'text':
             // For text questions, case-insensitive comparison
-            return userAnswer.toLowerCase().trim() == question.correct_answer.toLowerCase().trim();
+            return userAnswer.toLowerCase().trim() === String(correct_answer).toLowerCase().trim();
 
         case 'true-false':
             // For true/false questions, direct comparison
-            return userAnswer == question.correct_answer;
+            return userAnswer === correct_answer;
 
         default:
             return false;
     }
+}
+
+/**
+ * Calculate partial score for multiple-choice questions
+ * @param {Object} question - Question object
+ * @param {*} userAnswer - User's answer
+ * @returns {number} Partial score between 0 and 1
+ */
+export function calculatePartialScore(question, userAnswer) {
+    if (!userAnswer) return 0;
+
+    // Parse correct_answer if it's a JSON string
+    let correct_answer = question.correct_answer;
+    if (typeof correct_answer === 'string' && (correct_answer.startsWith('[') || correct_answer.startsWith('{'))) {
+        try {
+            correct_answer = JSON.parse(correct_answer);
+        } catch (e) {
+            console.error("Error parsing correct_answer:", e);
+            return 0;
+        }
+    }
+
+    // Only apply partial scoring to multiple-choice questions
+    if (question.type !== 'multiple') {
+        return isAnswerCorrect(question, userAnswer) ? 1 : 0;
+    }
+
+    const correctSet = new Set(Array.isArray(correct_answer) ? correct_answer : [correct_answer]);
+    const userSet = new Set(Array.isArray(userAnswer) ? userAnswer : [userAnswer]);
+
+    // If the user got everything perfectly correct
+    if (correctSet.size === userSet.size && [...correctSet].every(value => userSet.has(value))) {
+        return 1;
+    }
+
+    // Calculate partial score based on correct selections minus incorrect selections
+    let correctSelections = 0;
+    let incorrectSelections = 0;
+
+    // Count correct selections
+    userSet.forEach(answer => {
+        if (correctSet.has(answer)) {
+            correctSelections++;
+        } else {
+            incorrectSelections++;
+        }
+    });
+
+    // Count missed correct answers
+    const missedCorrect = correctSet.size - correctSelections;
+
+    // Partial score formula: (correct selections - incorrect selections) / total correct answers
+    // Ensures score is between 0 and 1, penalizes wrong selections
+    const partialScore = Math.max(0, (correctSelections - incorrectSelections) / correctSet.size);
+    
+    return partialScore;
 }
 
 /**
@@ -253,35 +319,63 @@ export function calculateExamResults(exam, answers) {
     let correctCount = 0;
     let incorrectCount = 0;
     let unansweredCount = 0;
+    let partialCount = 0;
+
+    console.log("Calculating exam results for exam:", exam.title);
+    console.log("User answers:", answers);
 
     exam.questions.forEach(question => {
-        totalPoints += question.points || 1; // Default to 1 point if not specified
+        const questionPoints = parseFloat(question.points) || 1; // Default to 1 point if not specified
+        totalPoints += questionPoints;
         const userAnswer = answers[question.id];
 
-        if (!userAnswer) {
+        console.log(`Question ${question.id}: points=${questionPoints}, userAnswer=`, userAnswer);
+
+        if (!userAnswer || (Array.isArray(userAnswer) && userAnswer.length === 0)) {
             unansweredCount++;
+            console.log(`Question ${question.id}: unanswered`);
             return;
         }
 
-        const isCorrect = isAnswerCorrect(question, userAnswer);
+        // Calculate partial score (0 to 1)
+        const partialScore = calculatePartialScore(question, userAnswer);
+        const earnedPoints = partialScore * questionPoints;
+        score += earnedPoints;
 
-        if (isCorrect) {
-            score += question.points || 1;
+        console.log(`Question ${question.id}: partialScore=${partialScore}, earnedPoints=${earnedPoints}`);
+
+        // Count as correct only if fully correct (score = 1.0)
+        if (partialScore === 1) {
             correctCount++;
+        } else if (partialScore > 0) {
+            partialCount++;
         } else {
             incorrectCount++;
         }
     });
 
+    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+
+    console.log("Final results:", {
+        score: Math.round(score * 100) / 100, // Round to 2 decimal places
+        total: totalPoints,
+        percentage,
+        correctCount,
+        incorrectCount,
+        partialCount,
+        unansweredCount
+    });
+
     const result = {
-        score,
+        score: Math.round(score * 100) / 100, // Round to 2 decimal places
         total: totalPoints,
         correctCount,
         incorrectCount,
         unansweredCount,
+        partialCount,
         totalQuestions: exam.questions.length,
         date: new Date().toISOString(),
-        percentage: totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0
+        percentage
     };
 
     return result;
