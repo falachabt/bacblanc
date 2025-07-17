@@ -105,7 +105,7 @@ export const examAdminService = {
                     *,
                     subject:subject_id (id, name, code)
                 `)
-                .order('created_at', { ascending: false });
+                .order('title');
             
             if (error) throw error;
             return data;
@@ -125,7 +125,7 @@ export const examAdminService = {
                     subject:subject_id (id, name, code)
                 `)
                 .eq('subject_id', subjectId)
-                .order('created_at', { ascending: false });
+                .order('title');
             
             if (error) throw error;
             return data;
@@ -137,7 +137,6 @@ export const examAdminService = {
                     id: 1, 
                     title: 'Examen Math - Fonctions', 
                     subject_id: subjectId,
-                    duration: '02:00:00',
                     status: 'published',
                     description: 'Examen sur les fonctions mathématiques',
                     subject: { id: subjectId, name: 'Mathématiques', code: 'MATH' }
@@ -149,10 +148,13 @@ export const examAdminService = {
     // Créer un nouvel examen
     async create(examData) {
         try {
+            // Remove duration from examData as it's a generated column
+            const { duration, ...dataToInsert } = examData;
+            
             const { data, error } = await supabase
                 .from('exams')
                 .insert([{
-                    ...examData,
+                    ...dataToInsert,
                     created_at: new Date().toISOString()
                 }])
                 .select(`
@@ -177,9 +179,12 @@ export const examAdminService = {
     // Mettre à jour un examen
     async update(id, examData) {
         try {
+            // Remove duration from examData as it's a generated column
+            const { duration, ...dataToUpdate } = examData;
+            
             const { data, error } = await supabase
                 .from('exams')
-                .update(examData)
+                .update(dataToUpdate)
                 .eq('id', id)
                 .select(`
                     *,
@@ -227,7 +232,7 @@ export const questionService = {
                 .from('questions')
                 .select('*')
                 .eq('exam_id', examId)
-                .order('created_at');
+                .order('id');
             
             if (error) throw error;
             return data;
@@ -239,6 +244,7 @@ export const questionService = {
                     id: 1,
                     exam_id: examId,
                     question_text: 'Quelle est la dérivée de f(x) = x² ?',
+                    content: 'Quelle est la dérivée de f(x) = x² ?',
                     type: 'multiple_choice',
                     options: JSON.stringify(['f\'(x) = x', 'f\'(x) = 2x', 'f\'(x) = x²', 'f\'(x) = 2']),
                     correct_answer: 'f\'(x) = 2x',
@@ -249,6 +255,7 @@ export const questionService = {
                     id: 2,
                     exam_id: examId,
                     question_text: 'Calculez lim(x→0) sin(x)/x',
+                    content: 'Calculez lim(x→0) sin(x)/x',
                     type: 'single_choice',
                     options: JSON.stringify(['0', '1', '∞', 'undefined']),
                     correct_answer: '1',
@@ -262,12 +269,17 @@ export const questionService = {
     // Créer une nouvelle question
     async create(questionData) {
         try {
+            // Ensure both content and question_text fields are set for compatibility
+            const dataToInsert = {
+                ...questionData,
+                content: questionData.question_text || questionData.content,
+                question_text: questionData.question_text || questionData.content,
+                created_at: new Date().toISOString()
+            };
+            
             const { data, error } = await supabase
                 .from('questions')
-                .insert([{
-                    ...questionData,
-                    created_at: new Date().toISOString()
-                }])
+                .insert([dataToInsert])
                 .select()
                 .single();
             
@@ -277,7 +289,8 @@ export const questionService = {
             console.warn("Supabase not available, simulating question creation");
             return { 
                 id: Date.now(), 
-                ...questionData, 
+                ...questionData,
+                content: questionData.question_text || questionData.content,
                 created_at: new Date().toISOString()
             };
         }
@@ -286,9 +299,16 @@ export const questionService = {
     // Mettre à jour une question
     async update(id, questionData) {
         try {
+            // Ensure both content and question_text fields are set for compatibility
+            const dataToUpdate = {
+                ...questionData,
+                content: questionData.question_text || questionData.content,
+                question_text: questionData.question_text || questionData.content
+            };
+            
             const { data, error } = await supabase
                 .from('questions')
-                .update(questionData)
+                .update(dataToUpdate)
                 .eq('id', id)
                 .select()
                 .single();
@@ -297,7 +317,11 @@ export const questionService = {
             return data;
         } catch (error) {
             console.warn("Supabase not available, simulating question update");
-            return { id, ...questionData };
+            return { 
+                id, 
+                ...questionData,
+                content: questionData.question_text || questionData.content
+            };
         }
     },
 

@@ -235,8 +235,14 @@ export default function AdminPage() {
                             subjects={subjects}
                             loading={loading}
                             onSelectSubject={goToExams}
-                            onAddSubject={() => setShowForm(true)}
-                            onEditSubject={setEditingItem}
+                            onAddSubject={() => {
+                                setEditingItem(null);
+                                setShowForm(true);
+                            }}
+                            onEditSubject={(item) => {
+                                setEditingItem(item);
+                                setShowForm(true);
+                            }}
                             onDeleteSubject={async (id) => {
                                 try {
                                     await subjectService.delete(id);
@@ -255,8 +261,14 @@ export default function AdminPage() {
                             loading={loading}
                             onSelectExam={goToQuestions}
                             onBack={goBack}
-                            onAddExam={() => setShowForm(true)}
-                            onEditExam={setEditingItem}
+                            onAddExam={() => {
+                                setEditingItem(null);
+                                setShowForm(true);
+                            }}
+                            onEditExam={(item) => {
+                                setEditingItem(item);
+                                setShowForm(true);
+                            }}
                             onDeleteExam={async (id) => {
                                 try {
                                     await examAdminService.delete(id);
@@ -274,8 +286,14 @@ export default function AdminPage() {
                             exam={selectedExam}
                             loading={loading}
                             onBack={goBack}
-                            onAddQuestion={() => setShowForm(true)}
-                            onEditQuestion={setEditingItem}
+                            onAddQuestion={() => {
+                                setEditingItem(null);
+                                setShowForm(true);
+                            }}
+                            onEditQuestion={(item) => {
+                                setEditingItem(item);
+                                setShowForm(true);
+                            }}
                             onDeleteQuestion={async (id) => {
                                 try {
                                     await questionService.delete(id);
@@ -460,7 +478,11 @@ function ExamsView({ exams, subject, loading, onSelectExam, onBack, onAddExam, o
                                 <div className="flex-1 cursor-pointer" onClick={() => onSelectExam(exam)}>
                                     <h3 className="font-semibold text-gray-900">{exam.title}</h3>
                                     <p className="text-sm text-gray-500">
-                                        Durée: {exam.duration || 'Non définie'} | 
+                                        {exam.available_at && exam.finished_at ? (
+                                            `Durée: ${Math.floor((new Date(exam.finished_at) - new Date(exam.available_at)) / (1000 * 60 * 60))}h${Math.floor(((new Date(exam.finished_at) - new Date(exam.available_at)) % (1000 * 60 * 60)) / (1000 * 60))}m`
+                                        ) : (
+                                            'Durée: Non définie'
+                                        )} | 
                                         Statut: {exam.status || 'brouillon'}
                                     </p>
                                     {exam.description && (
@@ -589,7 +611,7 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
             case NAVIGATION_STATES.SUBJECTS:
                 return { name: '', code: '', description: '' };
             case NAVIGATION_STATES.EXAMS:
-                return { title: '', description: '', duration: '02:00:00', status: 'draft' };
+                return { title: '', description: '', status: 'draft' };
             case NAVIGATION_STATES.QUESTIONS:
                 return { 
                     question_text: '', 
@@ -726,13 +748,23 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Durée (HH:MM:SS)
+                                        Date de début
                                     </label>
                                     <input
-                                        type="text"
-                                        value={formData.duration || '02:00:00'}
-                                        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                                        placeholder="02:00:00"
+                                        type="datetime-local"
+                                        value={formData.available_at ? new Date(formData.available_at).toISOString().slice(0, 16) : ''}
+                                        onChange={(e) => setFormData({ ...formData, available_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Date de fin
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={formData.finished_at ? new Date(formData.finished_at).toISOString().slice(0, 16) : ''}
+                                        onChange={(e) => setFormData({ ...formData, finished_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                                     />
                                 </div>
