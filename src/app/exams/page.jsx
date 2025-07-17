@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTokenAuth } from '@/context/TokenAuthContext';
 import { useExam } from '@/context/ExamContext'; // Import useExam context
-import Link from 'next/link';
 import supabase from "@/lib/supabase";
 import {
     BookOpen, Clock, Award, ChevronRight, Lock, Calendar, AlertCircle,
@@ -148,7 +147,7 @@ const ExamCard = ({ exam, hasAccess }) => {
 
                 <div className="text-xs text-gray-600 mb-2 flex items-center">
                     <Clock size={12} className="mr-1 text-gray-400" />
-                    Durée: {exam.duration.split(':')[0]}h{exam.duration.split(':')[1]}m
+                    Durée: {exam.duration ? `${exam.duration.split(':')[0]}h${exam.duration.split(':')[1]}m` : 'Non définie'}
                 </div>
 
                 {/* Afficher le score si l'examen est complété */}
@@ -284,7 +283,8 @@ export default function ExamsPage() {
         }
 
         const fetchData = async () => {
-            if (!user || !profile) return;
+            console.log("user: ", user);
+            if (!user) return;
 
             // Set a timeout to prevent infinite loading state
             const timeout = setTimeout(() => {
@@ -297,14 +297,15 @@ export default function ExamsPage() {
 
             setLoadingTimeout(timeout);
             setLoadingData(true);
-            setNoSubjectsForBacSeries(false);
+            // setNoSubjectsForBacSeries(false);
 
             try {
+                console.log("user: ", user);
                 // 1. D'abord, obtenir tous les sujets (subjects) qui correspondent à la série BAC de l'utilisateur
                 const { data: subjectsData, error: subjectsError } = await supabase
                     .from('subjects')
                     .select('id, name, code')
-                    .contains('concours_type', [profile.concours_type]);
+                    .contains('concours_type', [user.concours_type]);
 
                 if (subjectsError) throw subjectsError;
 
@@ -338,7 +339,7 @@ export default function ExamsPage() {
                     .order('created_at', { ascending: false });
 
                 if (paymentError && paymentError.code !== 'PGRST116') { // PGRST116 = not found
-                    throw paymentError;
+                    // throw paymentError;
                 }
 
                 // Si nous avons trouvé un paiement global valide
@@ -361,7 +362,7 @@ export default function ExamsPage() {
         };
 
         // Reset when component mounts
-        if (user && profile) {
+        if (user) {
             fetchData();
         }
 
@@ -371,14 +372,14 @@ export default function ExamsPage() {
                 clearTimeout(loadingTimeout);
             }
         };
-    }, [user, profile]);
+    }, [user]);
 
     // Fonction de rechargement explicite des données
     const refreshData = () => {
         setDataFetched(false);
         setError(null);
         setExams([]);
-        setNoSubjectsForBacSeries(false);
+        // setNoSubjectsForBacSeries(false);
         // Trigger the useEffect to reload data
         const reloadTimeout = setTimeout(() => {
             clearTimeout(reloadTimeout);

@@ -641,7 +641,6 @@ export default function PaymentPageContent() {
             const paymentParams = {
                 amount: isGlobalAccess ? GLOBAL_ACCESS_PRICE : exam.price,
                 currency: 'XAF',
-                email: user.email,
                 description: isGlobalAccess
                     ? `Elearn prepa | Challenge Bac Blanc`
                     : `Paiement pour l'examen: ${exam.title}`,

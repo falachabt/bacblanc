@@ -108,6 +108,8 @@ export function TokenAuthProvider({ children }) {
             setLoading(true);
             const token = getTokenFromHeaders();
 
+            console.log("Token:", token);
+
             if (!token) {
                 setUser(null);
                 setProfile(null);
@@ -117,6 +119,8 @@ export function TokenAuthProvider({ children }) {
 
             // Récupérer les informations utilisateur depuis l'API externe
             const externalUser = await fetchUserFromExternalAPI(token);
+
+            console.log("External User:", externalUser);
             
             if (!externalUser) {
                 setUser(null);
@@ -125,16 +129,17 @@ export function TokenAuthProvider({ children }) {
                 return;
             }
 
-            // Définir l'utilisateur avec les données externes
-            setUser({
-                id: externalUser.id,
-                firstname: externalUser.firstname,
-                token: token
-            });
+
 
             // Vérifier ou créer le profil dans la base de données
             const userProfile = await ensureProfileExists(externalUser);
-            setProfile(userProfile);
+
+
+            setUser({
+                ...userProfile,
+                full_name: userProfile.full_name || externalUser.firstname || 'User',
+                token: token
+            })
 
             // Rediriger vers la sélection de concours si le type n'est pas défini
             if (!userProfile.concours_type) {
@@ -216,6 +221,7 @@ export function TokenAuthProvider({ children }) {
 
 export function useTokenAuth() {
     const context = useContext(TokenAuthContext);
+
     if (context === undefined) {
         // Return default values instead of throwing an error during SSR
         if (typeof window === 'undefined') {
