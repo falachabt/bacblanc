@@ -40,9 +40,10 @@ const ExamCard = ({ exam, hasAccess }) => {
                     // Récupérer le score si l'examen est complété
                     const result = await getExistingResult(exam.id);
                     if (result) {
-                        // Use the percentage already calculated and stored in result
+                        // Use the score and total questions count for display
                         score = {
                             score: result.score,
+                            totalQuestions: result.totalQuestions || exam.questions?.length || 0,
                             totalPoints: result.total || exam.questions?.reduce((sum, a) => sum + (parseFloat(a.points) || 1), 0) || 100,
                             percentage: result.percentage || Math.round((result.score / (result.total || exam.questions?.reduce((sum, a) => sum + (parseFloat(a.points) || 1), 0) || 100)) * 100)
                         };
@@ -160,7 +161,7 @@ const ExamCard = ({ exam, hasAccess }) => {
                                 : 'text-red-700'
                         }`}>
                             <Award size={12} className="mr-1" />
-                            Score: {examStatus.score.percentage}%
+                            Score: {examStatus.score.score} / {examStatus.score.totalQuestions}
                         </div>
                     </div>
                 )}
