@@ -28,7 +28,7 @@ export async function GET(request) {
         // In production, this would be fetched from your auth service
         const mockUserData = {
             id: `user_${token.substring(0, 8)}`, // Generate consistent ID from token
-            firstname: token.includes('admin') ? 'Admin' : 'Test User',
+            firstname: token.includes('admin') ? 'Admin User' : 'Test User',
             email: `user_${token.substring(0, 8)}@example.com`,
             verified: true
         };
