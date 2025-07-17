@@ -12,22 +12,15 @@ export function TokenAuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    // Fonction pour récupérer le token depuis les headers
+    // Fonction pour récupérer le token depuis les headers ou localStorage
     const getTokenFromHeaders = useCallback(() => {
         // Only run on client side
         if (typeof window === 'undefined') return null;
         
-        // Dans un environnement React Native WebView, le token sera passé via une méthode spécifique
-        // Pour le moment, on simule avec localStorage pour les tests locaux
         try {
-            // Check if there's a token in localStorage, if not, set a test token for development
+            // Check for token in localStorage or window.authToken (for WebView integration)
             let token = localStorage.getItem('authToken') || window.authToken;
-            if (!token) {
-                // Set a test token for development purposes
-                token = 'test_token_12345678901234567890';
-                localStorage.setItem('authToken', token);
-            }
-            return token;
+            return token || null;
         } catch (error) {
             console.error('Error accessing localStorage:', error);
             return null;
@@ -37,9 +30,9 @@ export function TokenAuthProvider({ children }) {
     // Fonction pour appeler le serveur externe avec le token
     const fetchUserFromExternalAPI = useCallback(async (token) => {
         try {
-            // TODO: Remplacer par l'URL réelle de l'API externe
-            const response = await fetch('/api/external-user', {
-                method: 'GET',
+            // Call elearnprepa.com API to get user info
+            const response = await fetch('https://elearnprepa.com/api/external/user-info', {
+                method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
