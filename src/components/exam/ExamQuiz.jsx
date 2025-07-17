@@ -410,16 +410,24 @@ export default function ExamQuiz({ exam, onBack }) {
                         </button>
 
                         <button
-                            onClick={goToNextQuestion}
-                            disabled={currentQuestionIndex === exam.questions.length - 1}
+                            onClick={currentQuestionIndex === exam.questions.length - 1 ? () => setShowConfirmFinish(true) : goToNextQuestion}
                             className={`flex items-center px-4 py-2 rounded-md ${
                                 currentQuestionIndex === exam.questions.length - 1
-                                    ? 'text-gray-400 cursor-not-allowed'
+                                    ? 'bg-green-600 hover:bg-green-700 text-white'
                                     : 'text-gray-700 hover:bg-gray-100'
                             }`}
                         >
-                            Suivante
-                            <ChevronRight className="h-5 w-5 ml-1" />
+                            {currentQuestionIndex === exam.questions.length - 1 ? (
+                                <>
+                                    <CheckCircle className="h-5 w-5 mr-1" />
+                                    Terminer
+                                </>
+                            ) : (
+                                <>
+                                    Suivante
+                                    <ChevronRight className="h-5 w-5 ml-1" />
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

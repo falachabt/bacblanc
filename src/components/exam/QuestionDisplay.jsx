@@ -11,6 +11,38 @@ export default function QuestionDisplay({ question, userAnswer, onAnswer }) {
         setAnswer(userAnswer || null);
     }, [question.id, userAnswer]);
 
+    // Parse options from JSON string if needed and convert formats
+    const getQuestionOptions = () => {
+        if (!question.options) return [];
+        
+        let options = question.options;
+        
+        // If options is a string, parse it
+        if (typeof options === 'string') {
+            try {
+                options = JSON.parse(options);
+            } catch (e) {
+                console.error('Error parsing question options:', e);
+                return [];
+            }
+        }
+        
+        // If options is not an array, return empty array
+        if (!Array.isArray(options)) return [];
+        
+        // Convert old format (string array) to new format (object array)
+        if (options.length > 0 && typeof options[0] === 'string') {
+            return options.map((text, index) => ({
+                id: `option_${index}`,
+                text: text,
+                isCorrect: false
+            }));
+        }
+        
+        // Already in new format or empty
+        return options;
+    };
+
     // Soumettre la réponse au parent
     const submitAnswer = (newAnswer) => {
         setAnswer(newAnswer);
@@ -37,6 +69,7 @@ export default function QuestionDisplay({ question, userAnswer, onAnswer }) {
     // Question à choix multiple
     const renderMultipleChoiceQuestion = () => {
         const selectedOptions = answer || [];
+        const options = getQuestionOptions();
 
         const toggleOption = (optionId) => {
             const newSelected = [...(selectedOptions || [])];
@@ -58,7 +91,7 @@ export default function QuestionDisplay({ question, userAnswer, onAnswer }) {
                 <p className="text-sm text-blue-600 font-medium mb-2">
                     Sélectionnez toutes les réponses correctes :
                 </p>
-                {question.options.map((option) => (
+                {options.map((option) => (
                     <div
                         key={option.id}
                         onClick={() => toggleOption(option.id)}
@@ -88,12 +121,14 @@ export default function QuestionDisplay({ question, userAnswer, onAnswer }) {
 
     // Question à choix unique
     const renderSingleChoiceQuestion = () => {
+        const options = getQuestionOptions();
+        
         return (
             <div className="space-y-3 mt-4">
                 <p className="text-sm text-blue-600 font-medium mb-2">
                     Sélectionnez la bonne réponse :
                 </p>
-                {question.options.map((option) => (
+                {options.map((option) => (
                     <div
                         key={option.id}
                         onClick={() => submitAnswer(option.id)}

@@ -182,7 +182,15 @@ export function ExamProvider({ children }) {
     const saveExamState = async (examId, progressData) => {
         if (!user) return false;
         try {
-            await examService.saveProgress(user.id, examId, progressData.answers || {}, progressData.currentQuestion, progressData.timeLeft, progressData.timestamp);
+            console.log("Saving exam state with data:", progressData);
+            await examService.saveProgress(
+                user.id, 
+                examId, 
+                progressData.answers || {}, 
+                progressData.currentQuestion || 0, 
+                progressData.timeLeft, 
+                progressData.timestamp
+            );
             return true;
         } catch (err) {
             console.error("Error saving exam state:", err);
@@ -200,8 +208,14 @@ export function ExamProvider({ children }) {
             // Calculate results
             const results = calculateExamResults(exam, answers);
 
+            // Add answers to results for storage
+            const resultsWithAnswers = {
+                ...results,
+                answers
+            };
+
             // Save to database
-            await examService.completeExam(user.id, examId, results.score, answers);
+            await examService.completeExam(user.id, examId, resultsWithAnswers);
 
             // Clear randomized questions
             setRandomizedQuestions(prev => {

@@ -83,7 +83,7 @@ export const examService = {
 
     // Sauvegarder la progression
     async saveProgress(userId, examId, answers, last_open_question, timeLeft, timestamp) {
-        console.log("params ", userId, examId, answers);
+        console.log("Saving progress with params:", {userId, examId, answers, last_open_question, timeLeft});
         // Vérifier s'il existe une tentative en cours
         const {data: attempt, error: attemptError} = await supabase
             .from('exam_attempts')
@@ -99,27 +99,51 @@ export const examService = {
             // Mettre à jour la tentative existante
             const {data, error} = await supabase
                 .from('exam_attempts')
-                .update({answers, last_open_question, timeLeft, timestamp})
+                .update({
+                    answers, 
+                    last_open_question, 
+                    timeLeft: timeLeft || null,
+                    updated_at: new Date()
+                })
                 .eq('id', attempt.id)
                 .select()
                 .single();
 
             if (error) throw error;
+            console.log("Progress updated successfully:", data);
             return data;
         } else {
-            // Créer une nouvelle tentative
-            return await this.startExam(userId, examId, null);
+            // Créer une nouvelle tentative avec les données initiales
+            const {data, error} = await supabase
+                .from('exam_attempts')
+                .insert({
+                    user_id: userId,
+                    exam_id: examId,
+                    answers: answers || {},
+                    last_open_question: last_open_question || 0,
+                    timeLeft: timeLeft || null,
+                    started_at: new Date()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            console.log("New attempt created successfully:", data);
+            return data;
         }
     },
 
     // Terminer un examen
-    async completeExam(userId, examId, score, answers) {
+    async completeExam(userId, examId, examResults) {
         const {data, error} = await supabase
             .from('exam_attempts')
             .update({
                 completed_at: new Date(),
-                score,
-                answers
+                score: examResults.score,
+                total_points: examResults.total,
+                total_questions: examResults.totalQuestions,
+                percentage: examResults.percentage,
+                answers: examResults.answers || {}
             })
             .eq('user_id', userId)
             .eq('exam_id', examId)

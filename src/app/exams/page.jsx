@@ -40,10 +40,12 @@ const ExamCard = ({ exam, hasAccess }) => {
                     // Récupérer le score si l'examen est complété
                     const result = await getExistingResult(exam.id);
                     if (result) {
+                        // Use the stored values from the database
                         score = {
-                            score: result.score,
-                            totalPoints: exam.questions?.reduce((sum, a) => sum + a.points, 0) || 100,
-                            percentage: Math.round((result.score / (exam.questions?.reduce((sum, a) => sum + a.points, 0) || 100)) * 100)
+                            score: result.score || 0,
+                            totalQuestions: result.total_questions || 0,
+                            totalPoints: result.total_points || 0,
+                            percentage: result.percentage || 0
                         };
                     }
                 }
@@ -159,7 +161,7 @@ const ExamCard = ({ exam, hasAccess }) => {
                                 : 'text-red-700'
                         }`}>
                             <Award size={12} className="mr-1" />
-                            Score: {examStatus.score.percentage}%
+                            Score: {examStatus.score.score} / {examStatus.score.totalQuestions}
                         </div>
                     </div>
                 )}

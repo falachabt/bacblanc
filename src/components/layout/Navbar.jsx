@@ -4,7 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTokenAuth } from '@/context/TokenAuthContext';
-import { Home, Book, LogOut } from 'lucide-react';
+import { isAdmin } from '@/lib/adminAgent';
+import { Home, Book, LogOut, Settings } from 'lucide-react';
 import Image from 'next/image';
 
 export default function Navbar() {
@@ -64,6 +65,20 @@ export default function Navbar() {
                                                 Examens
                                             </Link>
                                         </li>
+                                        {/* Lien Admin - visible seulement pour les administrateurs */}
+                                        {user && isAdmin(user.external_id || user.id) && (
+                                            <li>
+                                                <Link
+                                                    href="/admin"
+                                                    className={`flex items-center hover:text-green-200 transition ${
+                                                        pathname === '/admin' ? 'font-bold' : ''
+                                                    }`}
+                                                >
+                                                    <Settings className="mr-2" size={20} />
+                                                    Admin
+                                                </Link>
+                                            </li>
+                                        )}
                                         <li>
                                             <button
                                                 onClick={logout}
