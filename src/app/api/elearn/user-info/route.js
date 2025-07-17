@@ -14,7 +14,7 @@ export async function POST(request) {
         }
         
         // Forward the request to elearnprepa.com
-        const response = await fetch('http://192.168.1.168:3001/api/external/user-info', {
+        const response = await fetch('https://elearnprepa.com/api/external/user-info', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
