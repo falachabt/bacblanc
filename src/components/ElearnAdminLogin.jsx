@@ -27,8 +27,8 @@ export default function ElearnAdminLogin({ onAuth }) {
         setError(null);
 
         try {
-            // Step 1: Login to obtain access token
-            const loginResponse = await fetch('https://elearnprepa.com/api/external/login', {
+            // Step 1: Login to obtain access token via our proxy
+            const loginResponse = await fetch('/api/elearn/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -41,7 +41,7 @@ export default function ElearnAdminLogin({ onAuth }) {
 
             if (!loginResponse.ok) {
                 const errorData = await loginResponse.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Login failed');
+                throw new Error(errorData.error || 'Login failed');
             }
 
             const loginData = await loginResponse.json();
@@ -51,8 +51,8 @@ export default function ElearnAdminLogin({ onAuth }) {
                 throw new Error('No access token received');
             }
 
-            // Step 2: Fetch user info using the access token
-            const userInfoResponse = await fetch('https://elearnprepa.com/api/external/user-info', {
+            // Step 2: Fetch user info using the access token via our proxy
+            const userInfoResponse = await fetch('/api/elearn/user-info', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ export default function ElearnAdminLogin({ onAuth }) {
 
             if (!userInfoResponse.ok) {
                 const errorData = await userInfoResponse.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Failed to fetch user info');
+                throw new Error(errorData.error || 'Failed to fetch user info');
             }
 
             const userInfo = await userInfoResponse.json();
@@ -116,7 +116,7 @@ export default function ElearnAdminLogin({ onAuth }) {
                             onChange={handleInputChange}
                             required
                             disabled={loading}
-                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-gray-500"
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 placeholder-gray-500"
                             placeholder="Enter your email"
                         />
                     </div>
@@ -136,7 +136,7 @@ export default function ElearnAdminLogin({ onAuth }) {
                             onChange={handleInputChange}
                             required
                             disabled={loading}
-                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-gray-500"
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 placeholder-gray-500"
                             placeholder="Enter your password"
                         />
                     </div>
