@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+test_elearn_integration.js
 
 # next.js
 /.next/
