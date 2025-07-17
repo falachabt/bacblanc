@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Regular User Test Setup</title>
+</head>
+<body>
+    <h1>Setting Regular User Token...</h1>
+    <p>Setting up regular user authentication token (not admin).</p>
+    <script>
+        // Set regular user token (should not be admin)
+        localStorage.setItem('authToken', 'regular_user_123');
+        console.log('Regular user token set:', localStorage.getItem('authToken'));
+        
+        // Redirect to admin page after a short delay
+        setTimeout(() => {
+            window.location.href = '/admin';
+        }, 1000);
+    </script>
+</body>
+</html>

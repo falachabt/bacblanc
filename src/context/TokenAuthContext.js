@@ -132,8 +132,22 @@ export function TokenAuthProvider({ children }) {
 
 
             // Vérifier ou créer le profil dans la base de données
-            const userProfile = await ensureProfileExists(externalUser);
-
+            let userProfile;
+            let supabaseError = null;
+            try {
+                userProfile = await ensureProfileExists(externalUser);
+            } catch (error) {
+                console.warn("Supabase error, using fallback profile:", error);
+                supabaseError = error;
+                // Fallback pour l'admin quand Supabase n'est pas disponible
+                userProfile = {
+                    id: externalUser.id,
+                    external_id: externalUser.id,
+                    full_name: externalUser.firstname || 'User',
+                    concours_type: 'general', // Valeur par défaut pour éviter la redirection
+                    created_at: new Date().toISOString()
+                };
+            }
 
             setUser({
                 ...userProfile,
@@ -142,7 +156,8 @@ export function TokenAuthProvider({ children }) {
             })
 
             // Rediriger vers la sélection de concours si le type n'est pas défini
-            if (!userProfile.concours_type) {
+            // Skip pour les admins en mode fallback
+            if (!userProfile.concours_type && !supabaseError) {
                 router.push('/concours-selection');
             }
 
