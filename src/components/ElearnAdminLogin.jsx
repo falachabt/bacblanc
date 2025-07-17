@@ -51,13 +51,22 @@ export default function ElearnAdminLogin({ onAuth }) {
                 throw new Error('No access token received');
             }
 
+            console.log('ElearnAdminLogin - Access token received:', accessToken);
+
             // Step 2: Fetch user info using the access token via our proxy
+            console.log('ElearnAdminLogin - Making user-info request with token:', accessToken);
+            
+            // Use a custom fetch to ensure no interference from Supabase or other libraries
             const userInfoResponse = await fetch('/api/elearn/user-info', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                }
+                    'Authorization': `Bearer ${accessToken}`,
+                    // Add a custom header to help identify our requests
+                    'X-Elearn-Token': accessToken
+                },
+                // Disable credentials to prevent automatic auth header injection
+                credentials: 'omit'
             });
 
             if (!userInfoResponse.ok) {

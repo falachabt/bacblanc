@@ -31,10 +31,12 @@ export default function HomePage() {
       // Store token in localStorage for TokenAuthContext to pick up
       localStorage.setItem('authToken', authData.token);
       
-      // Trigger re-authentication with the new token
-      if (authenticateWithToken) {
-        authenticateWithToken();
-      }
+      // Use a small delay to ensure localStorage is updated before re-authentication
+      setTimeout(() => {
+        if (authenticateWithToken) {
+          authenticateWithToken();
+        }
+      }, 100);
       
       // Hide login form
       setShowLogin(false);

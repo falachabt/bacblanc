@@ -30,20 +30,32 @@ export function TokenAuthProvider({ children }) {
     // Fonction pour appeler le serveur externe avec le token via proxy
     const fetchUserFromExternalAPI = useCallback(async (token) => {
         try {
+            console.log('TokenAuthContext - Making user-info request with token:', token);
+            
             // Call our proxy API instead of direct external API to avoid CORS issues
+            // Use custom headers to avoid Supabase interference
             const response = await fetch('/api/elearn/user-info', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                    'X-Elearn-Token': token
+                },
+                // Disable credentials to prevent automatic auth header injection
+                credentials: 'omit'
             });
 
+            console.log('TokenAuthContext - Response status:', response.status);
+
             if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.log('TokenAuthContext - Error response:', errorData);
                 throw new Error('Failed to fetch user from external API');
             }
 
-            return await response.json();
+            const userData = await response.json();
+            console.log('TokenAuthContext - User data received:', userData);
+            return userData;
         } catch (error) {
             console.error('Error fetching user from external API:', error);
             return null;
@@ -101,9 +113,12 @@ export function TokenAuthProvider({ children }) {
             setLoading(true);
             const token = getTokenFromHeaders();
 
-            console.log("Token:", token);
+            console.log("Token from localStorage:", token);
+            console.log("localStorage authToken:", localStorage.getItem('authToken'));
+            console.log("window.authToken:", window.authToken);
 
             if (!token) {
+                console.log("No token found, setting user and profile to null");
                 setUser(null);
                 setProfile(null);
                 setLoading(false);
