@@ -583,14 +583,45 @@ function QuestionsView({ questions, exam, loading, onBack, onAddQuestion, onEdit
                                     <h4 className="font-medium text-gray-900 mb-2">{question.question_text}</h4>
                                     {question.options && (
                                         <div className="text-sm text-gray-600">
-                                            <p className="mb-1">Options: {JSON.parse(question.options || '[]').join(', ')}</p>
+                                            <p className="mb-1">Options: {
+                                                (() => {
+                                                    try {
+                                                        const parsed = JSON.parse(question.options || '[]');
+                                                        if (Array.isArray(parsed) && parsed.length > 0) {
+                                                            // Handle both old string format and new object format
+                                                            return parsed.map(opt => 
+                                                                typeof opt === 'string' ? opt : opt.text
+                                                            ).join(', ');
+                                                        }
+                                                        return 'Aucune option';
+                                                    } catch {
+                                                        return question.options;
+                                                    }
+                                                })()
+                                            }</p>
                                             {question.correct_answer && (
                                                 <p className="text-green-600">
                                                     Réponse(s) correcte(s): {
                                                         (() => {
                                                             try {
+                                                                if (question.type === 'true-false') {
+                                                                    return question.correct_answer === 'true' ? 'Vrai' : 'Faux';
+                                                                }
+                                                                
                                                                 const parsed = JSON.parse(question.correct_answer);
-                                                                return Array.isArray(parsed) ? parsed.join(', ') : question.correct_answer;
+                                                                if (Array.isArray(parsed)) {
+                                                                    // Multiple choice - show option texts
+                                                                    const options = JSON.parse(question.options || '[]');
+                                                                    return parsed.map(correctId => {
+                                                                        const option = options.find(opt => opt.id === correctId);
+                                                                        return option ? option.text : correctId;
+                                                                    }).join(', ');
+                                                                } else {
+                                                                    // Single choice - show option text
+                                                                    const options = JSON.parse(question.options || '[]');
+                                                                    const option = options.find(opt => opt.id === parsed);
+                                                                    return option ? option.text : parsed;
+                                                                }
                                                             } catch {
                                                                 return question.correct_answer;
                                                             }
@@ -650,15 +681,55 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
         }
     });
 
+    // État pour les options des questions (format objet avec id, text, isCorrect)
     const [options, setOptions] = useState(() => {
         if (type === NAVIGATION_STATES.QUESTIONS && item?.options) {
             try {
-                return JSON.parse(item.options);
+                const parsed = JSON.parse(item.options);
+                // Convert old string format to new object format
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    if (typeof parsed[0] === 'string') {
+                        // Old format: ["option1", "option2"]
+                        const converted = parsed.map((text, index) => ({
+                            id: `option_${index}`,
+                            text: text,
+                            isCorrect: false
+                        }));
+                        
+                        // Set correct answers
+                        if (item?.correct_answer) {
+                            try {
+                                if (item.type === 'multiple' || item.type === 'multiple_choice') {
+                                    const correctAnswers = JSON.parse(item.correct_answer);
+                                    if (Array.isArray(correctAnswers)) {
+                                        converted.forEach(opt => {
+                                            opt.isCorrect = correctAnswers.includes(opt.text);
+                                        });
+                                    }
+                                } else if (item.type === 'single' || item.type === 'single_choice') {
+                                    converted.forEach(opt => {
+                                        opt.isCorrect = opt.text === item.correct_answer;
+                                    });
+                                }
+                            } catch {}
+                        }
+                        
+                        return converted;
+                    } else if (parsed[0].hasOwnProperty('text')) {
+                        // New format: [{id, text}] or [{id, text, isCorrect}]
+                        return parsed.map((option, index) => ({
+                            id: option.id || `option_${index}`,
+                            text: option.text || '',
+                            isCorrect: option.isCorrect || false
+                        }));
+                    }
+                }
+                return [{ id: 'option_0', text: '', isCorrect: false }];
             } catch {
-                return [''];
+                return [{ id: 'option_0', text: '', isCorrect: false }];
             }
         }
-        return [''];
+        return [{ id: 'option_0', text: '', isCorrect: false }];
     });
 
     const [correctOptions, setCorrectOptions] = useState(() => {
@@ -666,7 +737,7 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
             // Parse correct answer to get selected option indices
             try {
                 const answer = item.correct_answer;
-                if (item.type === 'multiple_choice') {
+                if (item.type === 'multiple' || item.type === 'multiple_choice') {
                     // For multiple choice, correct_answer might be JSON array or indices
                     const parsed = JSON.parse(answer);
                     return Array.isArray(parsed) ? parsed : [0];
@@ -690,17 +761,26 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
         
         // Traitement spécial pour les questions
         if (type === NAVIGATION_STATES.QUESTIONS) {
-            const filteredOptions = options.filter(opt => opt.trim());
-            dataToSave.options = JSON.stringify(filteredOptions);
+            // Filter out empty options and create proper format
+            const validOptions = options.filter(opt => opt.text.trim() !== '');
             
-            // Set correct answer based on selected options
-            if (formData.type === 'multiple_choice') {
-                // For multiple choice, store selected option indices as JSON array
-                const correctAnswers = correctOptions.map(index => filteredOptions[index]).filter(Boolean);
+            // Store options in the format expected by QuestionDisplay
+            dataToSave.options = JSON.stringify(validOptions);
+            
+            // Set correct answer based on question type
+            if (formData.type === 'multiple' || formData.type === 'multiple_choice') {
+                // For multiple choice, store IDs of correct options
+                const correctAnswers = validOptions
+                    .filter(opt => opt.isCorrect)
+                    .map(opt => opt.id);
                 dataToSave.correct_answer = JSON.stringify(correctAnswers);
-            } else if (formData.type === 'single_choice') {
-                // For single choice, store the actual option text
-                dataToSave.correct_answer = filteredOptions[correctOptions[0]] || '';
+            } else if (formData.type === 'single' || formData.type === 'single_choice') {
+                // For single choice, store the ID of the correct option
+                const correctOption = validOptions.find(opt => opt.isCorrect);
+                dataToSave.correct_answer = correctOption ? correctOption.id : '';
+            } else if (formData.type === 'true-false') {
+                // For true-false, store 'true' or 'false'
+                dataToSave.correct_answer = formData.correct_answer || 'true';
             }
             // For text questions, keep the correct_answer as is
         }
@@ -709,37 +789,35 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
     };
 
     const addOption = () => {
-        setOptions([...options, '']);
+        const newId = `option_${Date.now()}`;
+        setOptions([...options, { id: newId, text: '', isCorrect: false }]);
     };
 
     const updateOption = (index, value) => {
         const newOptions = [...options];
-        newOptions[index] = value;
+        newOptions[index] = { ...newOptions[index], text: value };
         setOptions(newOptions);
     };
 
     const removeOption = (index) => {
         const newOptions = options.filter((_, i) => i !== index);
         setOptions(newOptions);
-        // Update correct options indices
-        const newCorrectOptions = correctOptions
-            .map(idx => idx > index ? idx - 1 : idx)
-            .filter(idx => idx < newOptions.length && idx >= 0);
-        setCorrectOptions(newCorrectOptions.length ? newCorrectOptions : [0]);
     };
 
     const toggleCorrectOption = (index) => {
-        if (formData.type === 'multiple_choice') {
+        const newOptions = [...options];
+        
+        if (formData.type === 'multiple') {
             // Multiple choice: can select multiple correct answers
-            if (correctOptions.includes(index)) {
-                setCorrectOptions(correctOptions.filter(idx => idx !== index));
-            } else {
-                setCorrectOptions([...correctOptions, index]);
-            }
+            newOptions[index].isCorrect = !newOptions[index].isCorrect;
         } else {
             // Single choice: only one correct answer
-            setCorrectOptions([index]);
+            newOptions.forEach((opt, i) => {
+                opt.isCorrect = i === index;
+            });
         }
+        
+        setOptions(newOptions);
     };
 
     const getTitle = () => {
@@ -802,28 +880,31 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
                                         Types de concours
                                     </label>
                                     <div className="space-y-2">
-                                        {['BAC A', 'BAC C', 'BAC D', 'BAC F', 'BAC G', 'PROBATOIRE', 'BEPC'].map(type => (
-                                            <label key={type} className="flex items-center">
+                                        {[
+                                            { id: 'ingenieur', name: 'Concours Ingénieur' },
+                                            { id: 'medecine', name: 'Concours Médecine' }
+                                        ].map(type => (
+                                            <label key={type.id} className="flex items-center">
                                                 <input
                                                     type="checkbox"
-                                                    checked={(formData.concours_type || []).includes(type)}
+                                                    checked={(formData.concours_type || []).includes(type.id)}
                                                     onChange={(e) => {
                                                         const currentTypes = formData.concours_type || [];
                                                         if (e.target.checked) {
                                                             setFormData({ 
                                                                 ...formData, 
-                                                                concours_type: [...currentTypes, type]
+                                                                concours_type: [...currentTypes, type.id]
                                                             });
                                                         } else {
                                                             setFormData({ 
                                                                 ...formData, 
-                                                                concours_type: currentTypes.filter(t => t !== type)
+                                                                concours_type: currentTypes.filter(t => t !== type.id)
                                                             });
                                                         }
                                                     }}
                                                     className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                                                 />
-                                                <span className="ml-2 text-sm text-gray-700">{type}</span>
+                                                <span className="ml-2 text-sm text-gray-700">{type.name}</span>
                                             </label>
                                         ))}
                                     </div>
@@ -924,13 +1005,14 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
                                         Type de question
                                     </label>
                                     <select
-                                        value={formData.type || 'multiple_choice'}
+                                        value={formData.type || 'multiple'}
                                         onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                                     >
-                                        <option value="multiple_choice">QCM</option>
-                                        <option value="single_choice">Question unique</option>
+                                        <option value="multiple">QCM (choix multiple)</option>
+                                        <option value="single">Question unique</option>
                                         <option value="text">Texte libre</option>
+                                        <option value="true-false">Vrai/Faux</option>
                                     </select>
                                 </div>
                                 <div>
@@ -946,7 +1028,7 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
                                     />
                                 </div>
                                 
-                                {(formData.type === 'multiple_choice' || formData.type === 'single_choice') && (
+                                {(formData.type === 'multiple' || formData.type === 'single') && (
                                     <>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -954,10 +1036,10 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
                                             </label>
                                             <div className="space-y-2">
                                                 {options.map((option, index) => (
-                                                    <div key={index} className="flex items-center space-x-2">
+                                                    <div key={option.id || index} className="flex items-center space-x-2">
                                                         <input
                                                             type="text"
-                                                            value={option}
+                                                            value={option.text}
                                                             onChange={(e) => updateOption(index, e.target.value)}
                                                             placeholder={`Option ${index + 1}`}
                                                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
@@ -966,11 +1048,11 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
                                                             type="button"
                                                             onClick={() => toggleCorrectOption(index)}
                                                             className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
-                                                                correctOptions.includes(index)
+                                                                option.isCorrect
                                                                     ? 'bg-green-100 border-green-300 text-green-700'
                                                                     : 'bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100'
                                                             }`}
-                                                            title={correctOptions.includes(index) ? 'Réponse correcte' : 'Marquer comme correct'}
+                                                            title={option.isCorrect ? 'Réponse correcte' : 'Marquer comme correct'}
                                                         >
                                                             <CheckCircle className="h-4 w-4" />
                                                         </button>
@@ -994,18 +1076,50 @@ function FormModal({ type, item, subject, exam, onClose, onSave }) {
                                                     <span>Ajouter une option</span>
                                                 </button>
                                             </div>
-                                            {formData.type === 'multiple_choice' && (
+                                            {formData.type === 'multiple' && (
                                                 <p className="text-xs text-gray-500 mt-1">
                                                     Cliquez sur <CheckCircle className="h-3 w-3 inline" /> pour marquer les réponses correctes (plusieurs possibles)
                                                 </p>
                                             )}
-                                            {formData.type === 'single_choice' && (
+                                            {formData.type === 'single' && (
                                                 <p className="text-xs text-gray-500 mt-1">
                                                     Cliquez sur <CheckCircle className="h-3 w-3 inline" /> pour marquer la réponse correcte (une seule)
                                                 </p>
                                             )}
                                         </div>
                                     </>
+                                )}
+
+                                {formData.type === 'true-false' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Réponse correcte
+                                        </label>
+                                        <div className="flex space-x-4">
+                                            <label className="flex items-center">
+                                                <input
+                                                    type="radio"
+                                                    name="true-false"
+                                                    value="true"
+                                                    checked={formData.correct_answer === 'true'}
+                                                    onChange={(e) => setFormData({ ...formData, correct_answer: e.target.value })}
+                                                    className="mr-2"
+                                                />
+                                                Vrai
+                                            </label>
+                                            <label className="flex items-center">
+                                                <input
+                                                    type="radio"
+                                                    name="true-false"
+                                                    value="false"
+                                                    checked={formData.correct_answer === 'false'}
+                                                    onChange={(e) => setFormData({ ...formData, correct_answer: e.target.value })}
+                                                    className="mr-2"
+                                                />
+                                                Faux
+                                            </label>
+                                        </div>
+                                    </div>
                                 )}
 
                                 {formData.type === 'text' && (
