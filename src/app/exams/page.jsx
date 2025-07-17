@@ -40,10 +40,11 @@ const ExamCard = ({ exam, hasAccess }) => {
                     // Récupérer le score si l'examen est complété
                     const result = await getExistingResult(exam.id);
                     if (result) {
+                        // Use the percentage already calculated and stored in result
                         score = {
                             score: result.score,
-                            totalPoints: exam.questions?.reduce((sum, a) => sum + a.points, 0) || 100,
-                            percentage: Math.round((result.score / (exam.questions?.reduce((sum, a) => sum + a.points, 0) || 100)) * 100)
+                            totalPoints: result.total || exam.questions?.reduce((sum, a) => sum + (parseFloat(a.points) || 1), 0) || 100,
+                            percentage: result.percentage || Math.round((result.score / (result.total || exam.questions?.reduce((sum, a) => sum + (parseFloat(a.points) || 1), 0) || 100)) * 100)
                         };
                     }
                 }
