@@ -3,42 +3,28 @@ import { NextResponse } from 'next/server';
 export async function POST(request) {
     try {
         const authHeader = request.headers.get('authorization');
-        const customTokenHeader = request.headers.get('x-elearn-token');
-        
-        console.log('User-info API - Authorization header received:', authHeader);
-        console.log('User-info API - Custom token header received:', customTokenHeader);
-        console.log('User-info API - All headers:', Object.fromEntries(request.headers.entries()));
-        
-        // Prefer custom token header over authorization header to avoid Supabase interference
-        let tokenToUse = authHeader;
-        if (customTokenHeader) {
-            tokenToUse = `Bearer ${customTokenHeader}`;
-            console.log('User-info API - Using custom token header');
-        }
-        
-        if (!tokenToUse && !customTokenHeader) {
-            console.log('User-info API - No authorization header or custom token provided');
+
+
+        console.log('Authorization header:', authHeader);
+        if (!authHeader) {
             return NextResponse.json(
-                { error: 'Authorization header or custom token is required' },
+                { error: 'Authorization header is required' },
                 { status: 401 }
             );
         }
         
         // Forward the request to elearnprepa.com
-        console.log('User-info API - Forwarding request to elearnprepa.com with token:', tokenToUse);
-        const response = await fetch('https://elearnprepa.com/api/external/user-info', {
+        const response = await fetch('http://192.168.1.168:3001/api/external/user-info', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': tokenToUse
+                'Authorization': authHeader
             }
         });
-        
-        console.log('User-info API - Response status from elearnprepa.com:', response.status);
+        console.log('Response status from elearnprepa.com:', response.status);
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            console.log('User-info API - Error response from elearnprepa.com:', errorData);
             return NextResponse.json(
                 { error: errorData.message || 'Failed to fetch user info' },
                 { status: response.status }
@@ -46,7 +32,6 @@ export async function POST(request) {
         }
         
         const data = await response.json();
-        console.log('User-info API - Success response from elearnprepa.com:', data);
         return NextResponse.json(data);
         
     } catch (error) {

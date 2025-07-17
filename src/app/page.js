@@ -27,7 +27,7 @@ export default function HomePage() {
 
   // Handle authentication data from ElearnAdminLogin
   const handleAuth = (authData) => {
-    if (authData && authData.token && authData.user) {
+    if (authData && authData.token) {
       // Store token in localStorage for TokenAuthContext to pick up
       localStorage.setItem('authToken', authData.token);
       

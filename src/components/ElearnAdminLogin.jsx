@@ -74,7 +74,7 @@ export default function ElearnAdminLogin({ onAuth }) {
                 throw new Error(errorData.error || 'Failed to fetch user info');
             }
 
-            const userInfo = await userInfoResponse.json();
+            const userInfo = await userInfoResponse.json().user;
 
             // Pass authentication data to parent component
             onAuth({

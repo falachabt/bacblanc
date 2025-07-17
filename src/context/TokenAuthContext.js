@@ -54,8 +54,8 @@ export function TokenAuthProvider({ children }) {
             }
 
             const userData = await response.json();
-            console.log('TokenAuthContext - User data received:', userData);
-            return userData;
+            console.log('TokenAuthContext - User data received:', userData.user);
+            return userData.user || null;
         } catch (error) {
             console.error('Error fetching user from external API:', error);
             return null;
@@ -73,8 +73,11 @@ export function TokenAuthProvider({ children }) {
                 .single();
 
             if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = "not found"
-                throw fetchError;
+                // throw fetchError;
+
             }
+
+            console.log("ensure Existing profile:", existingProfile);
 
             if (existingProfile) {
                 return existingProfile;
@@ -92,7 +95,10 @@ export function TokenAuthProvider({ children }) {
                 .select()
                 .single();
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                console.error("Error inserting new profile:", insertError.message);
+                throw insertError;
+            };
 
             return newProfile;
         } catch (error) {
@@ -194,14 +200,20 @@ export function TokenAuthProvider({ children }) {
             setLoading(true);
             if (!user) throw new Error("No user logged in.");
 
+            console.log("Updating concours type:", concoursType);
+            console.log("User:", user, profile);
+
             const { data, error } = await supabase
                 .from('users_profiles')
                 .update({ concours_type: concoursType })
-                .eq('external_id', user.id)
+                .eq('external_id', user.external_id)
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {;
+                console.error("Error updating concours type:", error.message);
+                throw error;
+            }
 
             setProfile(data);
             return { data, error: null };

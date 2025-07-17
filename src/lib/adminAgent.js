@@ -4,6 +4,7 @@ import supabase from '@/lib/supabase';
 export const ADMIN_EXTERNAL_IDS = [
     'user_test_tok', // Token admin de test
     'user_admin_to', // Autre token admin
+    'e75a4bf1-cc17-44bd-9b5e-7a9de20c9360'
     // Ajouter d'autres external IDs d'administrateurs ici
 ];
 
