@@ -16,7 +16,7 @@ export function TokenAuthProvider({ children }) {
     const getTokenFromHeaders = useCallback(() => {
         // Only run on client side
         if (typeof window === 'undefined') return null;
-        
+
         try {
             // Check for token in localStorage or window.authToken (for WebView integration)
             let token = localStorage.getItem('authToken') || window.authToken;
@@ -31,16 +31,17 @@ export function TokenAuthProvider({ children }) {
     const fetchUserFromExternalAPI = useCallback(async (token) => {
         try {
             console.log('TokenAuthContext - Making user-info request with token:', token);
-            
+
             // Call our proxy API instead of direct external API to avoid CORS issues
             // Use custom headers to avoid Supabase interference
+            // Also send token in the request body as a fallback
             const response = await fetch('/api/elearn/user-info', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
-                    // 'X-Elearn-Token': token
                 },
+                body: JSON.stringify({ token: token }),
                 // Disable credentials to prevent automatic auth header injection
                 // credentials: 'omit'
             });
@@ -135,7 +136,7 @@ export function TokenAuthProvider({ children }) {
             const externalUser = await fetchUserFromExternalAPI(token);
 
             console.log("External User:", externalUser);
-            
+
             if (!externalUser) {
                 setUser(null);
                 setProfile(null);

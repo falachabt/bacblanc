@@ -3,17 +3,38 @@
 
 export async function GET(request) {
     try {
-        // Get the Authorization header
+        // Try to get authorization from different sources
+        let token = null;
+
+        // 1. Try to get from headers
         const authHeader = request.headers.get('Authorization');
-        
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        } else {
+            // 2. Try to get from query parameters
+            const url = new URL(request.url);
+            const tokenFromQuery = url.searchParams.get('token');
+
+            if (tokenFromQuery) {
+                token = tokenFromQuery;
+            } else {
+                // 3. Try to get from cookies
+                const cookies = request.cookies;
+                const tokenFromCookie = cookies.get('authToken')?.value;
+
+                if (tokenFromCookie) {
+                    token = tokenFromCookie;
+                }
+            }
+        }
+
+        if (!token) {
             return Response.json(
-                { error: 'Authorization header missing or invalid' },
+                { error: 'Authorization token is required (in header, query parameter, or cookie)' },
                 { status: 401 }
             );
         }
-
-        const token = authHeader.split(' ')[1];
 
         // Mock token validation - In production, this would validate against your auth service
         // For demo purposes, we'll accept any token and return mock user data
