@@ -4,7 +4,7 @@ export async function POST(request) {
     try {
         const authHeader = request.headers.get('authorization');
 
-
+        console.log('Request headers:', request.headers);
         console.log('Authorization header:', authHeader);
         if (!authHeader) {
             return NextResponse.json(
@@ -14,14 +14,14 @@ export async function POST(request) {
         }
         
         // Forward the request to elearnprepa.com
-        const response = await fetch('https://elearnprepa.com/api/external/user-info', {
+        const response = await fetch('https://www.elearnprepa.com/api/external/user-info', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': authHeader
             }
         });
-        console.log('Response status from elearnprepa.com:', response.status);
+        console.log('Response status from elearnprepa.com:', response);
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));

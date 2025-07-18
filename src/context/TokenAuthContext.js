@@ -39,10 +39,10 @@ export function TokenAuthProvider({ children }) {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
-                    'X-Elearn-Token': token
+                    // 'X-Elearn-Token': token
                 },
                 // Disable credentials to prevent automatic auth header injection
-                credentials: 'omit'
+                // credentials: 'omit'
             });
 
             console.log('TokenAuthContext - Response status:', response.status);
@@ -57,7 +57,7 @@ export function TokenAuthProvider({ children }) {
             console.log('TokenAuthContext - User data received:', userData.user);
             return userData.user || null;
         } catch (error) {
-            console.error('Error fetching user from external API:', error);
+            console.log('Error fetching user from external API:', error);
             return null;
         }
     }, []);

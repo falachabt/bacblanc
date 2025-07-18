@@ -63,7 +63,7 @@ export default function ElearnAdminLogin({ onAuth }) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${accessToken}`,
                     // Add a custom header to help identify our requests
-                    'X-Elearn-Token': accessToken
+                    // 'X-Elearn-Token': accessToken
                 },
                 // Disable credentials to prevent automatic auth header injection
                 credentials: 'omit'
