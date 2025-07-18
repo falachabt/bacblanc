@@ -98,6 +98,10 @@ export function TokenAuthProvider({ children }) {
             console.log("ensure Existing profile:", existingProfile);
 
             if (existingProfile) {
+                if(!existingProfile.concours_type){
+                    // Rediriger vers la sélection de concours si le type n'est pas défini
+                    router.push('/concours-selection');
+                }
                 return existingProfile;
             }
 

@@ -275,6 +275,11 @@ export default function ExamsPage() {
         if (!authLoading && !user) {
             router.push('/');
         }
+
+        // Si l'utilisateur n'a pas de type de concours défini, rediriger vers la page de sélection
+        if (!authLoading && user && !profile?.concours_type) {
+            router.push('/concours-selection');
+        }
     }, [user, authLoading, router]);
 
     // Chargement des examens et vérification de l'accès global
