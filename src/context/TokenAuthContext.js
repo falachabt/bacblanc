@@ -49,7 +49,6 @@ export function TokenAuthProvider({ children }) {
     // Fonction pour appeler le serveur externe avec le token via proxy
     const fetchUserFromExternalAPI = useCallback(async (token) => {
         try {
-            console.log('TokenAuthContext - Making user-info request with token:', token);
 
             // Call our proxy API instead of direct external API to avoid CORS issues
             // Use custom headers to avoid Supabase interference
@@ -65,7 +64,6 @@ export function TokenAuthProvider({ children }) {
                 // credentials: 'omit'
             });
 
-            console.log('TokenAuthContext - Response status:', response.status);
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -114,6 +112,8 @@ export function TokenAuthProvider({ children }) {
                 }])
                 .select()
                 .single();
+
+            router.push('/concours-selection');
 
             if (insertError) {
                 console.error("Error inserting new profile:", insertError.message);
