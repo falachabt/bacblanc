@@ -12,47 +12,70 @@ export function TokenAuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    // Fonction pour récupérer le token depuis les headers
+    // Fonction pour récupérer le token depuis différentes sources
     const getTokenFromHeaders = useCallback(() => {
         // Only run on client side
         if (typeof window === 'undefined') return null;
-        
-        // Dans un environnement React Native WebView, le token sera passé via une méthode spécifique
-        // Pour le moment, on simule avec localStorage pour les tests locaux
+
         try {
-            // Check if there's a token in localStorage, if not, set a test token for development
-            let token = localStorage.getItem('authToken') || window.authToken;
-            if (!token) {
-                // Set a test token for development purposes
-                token = 'test_token_12345678901234567890';
-                localStorage.setItem('authToken', token);
+            // 1. Check for token in localStorage
+            let token = localStorage.getItem('authToken');
+            if (token) {
+                console.log('Token found in localStorage');
+                return token;
             }
-            return token;
+
+            // 2. Check for token in sessionStorage
+            token = sessionStorage.getItem('authToken');
+            if (token) {
+                console.log('Token found in sessionStorage');
+                return token;
+            }
+
+            // 3. Check for token in window.authToken (for WebView integration)
+            token = window.authToken;
+            if (token) {
+                console.log('Token found in window.authToken');
+                return token;
+            }
+
+            return null;
         } catch (error) {
-            console.error('Error accessing localStorage:', error);
+            console.error('Error accessing storage:', error);
             return null;
         }
     }, []);
 
-    // Fonction pour appeler le serveur externe avec le token
+    // Fonction pour appeler le serveur externe avec le token via proxy
     const fetchUserFromExternalAPI = useCallback(async (token) => {
         try {
-            // TODO: Remplacer par l'URL réelle de l'API externe
-            const response = await fetch('/api/external-user', {
-                method: 'GET',
+
+            // Call our proxy API instead of direct external API to avoid CORS issues
+            // Use custom headers to avoid Supabase interference
+            // Also send token in the request body as a fallback
+            const response = await fetch('/api/elearn/user-info', {
+                method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({ token: token }),
+                // Disable credentials to prevent automatic auth header injection
+                // credentials: 'omit'
             });
 
+
             if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.log('TokenAuthContext - Error response:', errorData);
                 throw new Error('Failed to fetch user from external API');
             }
 
-            return await response.json();
+            const userData = await response.json();
+            console.log('TokenAuthContext - User data received:', userData.user);
+            return userData.user || null;
         } catch (error) {
-            console.error('Error fetching user from external API:', error);
+            console.log('Error fetching user from external API:', error);
             return null;
         }
     }, []);
@@ -68,8 +91,11 @@ export function TokenAuthProvider({ children }) {
                 .single();
 
             if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = "not found"
-                throw fetchError;
+                // throw fetchError;
+
             }
+
+            console.log("ensure Existing profile:", existingProfile);
 
             if (existingProfile) {
                 return existingProfile;
@@ -87,7 +113,12 @@ export function TokenAuthProvider({ children }) {
                 .select()
                 .single();
 
-            if (insertError) throw insertError;
+            router.push('/concours-selection');
+
+            if (insertError) {
+                console.error("Error inserting new profile:", insertError.message);
+                throw insertError;
+            };
 
             return newProfile;
         } catch (error) {
@@ -108,9 +139,12 @@ export function TokenAuthProvider({ children }) {
             setLoading(true);
             const token = getTokenFromHeaders();
 
-            console.log("Token:", token);
+            console.log("Token from localStorage:", token);
+            console.log("localStorage authToken:", localStorage.getItem('authToken'));
+            console.log("window.authToken:", window.authToken);
 
             if (!token) {
+                console.log("No token found, setting user and profile to null");
                 setUser(null);
                 setProfile(null);
                 setLoading(false);
@@ -121,7 +155,7 @@ export function TokenAuthProvider({ children }) {
             const externalUser = await fetchUserFromExternalAPI(token);
 
             console.log("External User:", externalUser);
-            
+
             if (!externalUser) {
                 setUser(null);
                 setProfile(null);
@@ -186,14 +220,20 @@ export function TokenAuthProvider({ children }) {
             setLoading(true);
             if (!user) throw new Error("No user logged in.");
 
+            console.log("Updating concours type:", concoursType);
+            console.log("User:", user, profile);
+
             const { data, error } = await supabase
                 .from('users_profiles')
                 .update({ concours_type: concoursType })
-                .eq('external_id', user.id)
+                .eq('external_id', user.external_id)
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {;
+                console.error("Error updating concours type:", error.message);
+                throw error;
+            }
 
             setProfile(data);
             return { data, error: null };
@@ -205,15 +245,42 @@ export function TokenAuthProvider({ children }) {
         }
     };
 
-    // Fonction de déconnexion (vider les états locaux)
+    // Fonction de déconnexion (vider les états locaux et tous les tokens stockés)
     const logout = async () => {
         try {
             setLoading(true);
             setUser(null);
             setProfile(null);
+
             if (typeof window !== 'undefined') {
-                localStorage.removeItem('authToken');
+                // Clear all client-side storage locations
+                try {
+                    // 1. Clear localStorage
+                    localStorage.removeItem('authToken');
+
+                    // 2. Clear sessionStorage
+                    sessionStorage.removeItem('authToken');
+
+                    // 3. Clear window.authToken if it exists
+                    if (window.authToken) {
+                        delete window.authToken;
+                    }
+
+                    console.log('All token storage locations cleared');
+                } catch (storageError) {
+                    console.error("Error clearing token storage:", storageError);
+                }
+
+                // 4. Clear the cookie by making a request to a logout endpoint
+                // This is a best practice approach since HTTP-only cookies can't be cleared directly from client-side
+                fetch('/api/auth/logout', { 
+                    method: 'POST',
+                    credentials: 'include'
+                }).catch(err => {
+                    console.warn('Failed to clear auth cookie:', err);
+                });
             }
+
             router.push('/');
         } catch (error) {
             console.error("Error during logout:", error.message);
