@@ -10,12 +10,12 @@ import Link from 'next/link';
 export default function HomePage() {
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
-  
+
   // Safely get auth context
   let user = null;
   let loading = true;
   let authenticateWithToken = null;
-  
+
   try {
     const auth = useTokenAuth();
     user = auth.user;
@@ -28,16 +28,26 @@ export default function HomePage() {
   // Handle authentication data from ElearnAdminLogin
   const handleAuth = (authData) => {
     if (authData && authData.token) {
-      // Store token in localStorage for TokenAuthContext to pick up
-      localStorage.setItem('authToken', authData.token);
-      
-      // Use a small delay to ensure localStorage is updated before re-authentication
+      try {
+        // Store token in multiple storage locations for redundancy
+        // 1. Store in localStorage (primary storage)
+        localStorage.setItem('authToken', authData.token);
+
+        // 2. Store in sessionStorage (backup storage)
+        sessionStorage.setItem('authToken', authData.token);
+
+        console.log('Token stored in localStorage and sessionStorage');
+      } catch (error) {
+        console.error('Error storing token:', error);
+      }
+
+      // Use a small delay to ensure storage is updated before re-authentication
       setTimeout(() => {
         if (authenticateWithToken) {
           authenticateWithToken();
         }
       }, 100);
-      
+
       // Hide login form
       setShowLogin(false);
     }

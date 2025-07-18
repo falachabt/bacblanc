@@ -12,17 +12,36 @@ export function TokenAuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    // Fonction pour récupérer le token depuis les headers ou localStorage
+    // Fonction pour récupérer le token depuis différentes sources
     const getTokenFromHeaders = useCallback(() => {
         // Only run on client side
         if (typeof window === 'undefined') return null;
 
         try {
-            // Check for token in localStorage or window.authToken (for WebView integration)
-            let token = localStorage.getItem('authToken') || window.authToken;
-            return token || null;
+            // 1. Check for token in localStorage
+            let token = localStorage.getItem('authToken');
+            if (token) {
+                console.log('Token found in localStorage');
+                return token;
+            }
+
+            // 2. Check for token in sessionStorage
+            token = sessionStorage.getItem('authToken');
+            if (token) {
+                console.log('Token found in sessionStorage');
+                return token;
+            }
+
+            // 3. Check for token in window.authToken (for WebView integration)
+            token = window.authToken;
+            if (token) {
+                console.log('Token found in window.authToken');
+                return token;
+            }
+
+            return null;
         } catch (error) {
-            console.error('Error accessing localStorage:', error);
+            console.error('Error accessing storage:', error);
             return null;
         }
     }, []);
@@ -226,15 +245,42 @@ export function TokenAuthProvider({ children }) {
         }
     };
 
-    // Fonction de déconnexion (vider les états locaux)
+    // Fonction de déconnexion (vider les états locaux et tous les tokens stockés)
     const logout = async () => {
         try {
             setLoading(true);
             setUser(null);
             setProfile(null);
+
             if (typeof window !== 'undefined') {
-                localStorage.removeItem('authToken');
+                // Clear all client-side storage locations
+                try {
+                    // 1. Clear localStorage
+                    localStorage.removeItem('authToken');
+
+                    // 2. Clear sessionStorage
+                    sessionStorage.removeItem('authToken');
+
+                    // 3. Clear window.authToken if it exists
+                    if (window.authToken) {
+                        delete window.authToken;
+                    }
+
+                    console.log('All token storage locations cleared');
+                } catch (storageError) {
+                    console.error("Error clearing token storage:", storageError);
+                }
+
+                // 4. Clear the cookie by making a request to a logout endpoint
+                // This is a best practice approach since HTTP-only cookies can't be cleared directly from client-side
+                fetch('/api/auth/logout', { 
+                    method: 'POST',
+                    credentials: 'include'
+                }).catch(err => {
+                    console.warn('Failed to clear auth cookie:', err);
+                });
             }
+
             router.push('/');
         } catch (error) {
             console.error("Error during logout:", error.message);
