@@ -308,11 +308,11 @@ export default function ExamsPage() {
 
             try {
                 console.log("user: ", user);
-                // 1. D'abord, obtenir tous les sujets (subjects) qui correspondent à la série BAC de l'utilisateur
+                // 1. D'abord, obtenir tous les sujets (subjects) qui correspondent à l'exam de l'utilisateur
                 const { data: subjectsData, error: subjectsError } = await supabase
                     .from('subjects')
                     .select('id, name, code')
-                    .contains('concours_type', [user.concours_type]);
+                    .contains('concours_type', [profile.concours_type]);
 
                 if (subjectsError) throw subjectsError;
 
@@ -379,7 +379,7 @@ export default function ExamsPage() {
                 clearTimeout(loadingTimeout);
             }
         };
-    }, [user]);
+    }, [user, profile]);
 
     // Fonction de rechargement explicite des données
     const refreshData = () => {
