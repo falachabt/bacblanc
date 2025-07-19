@@ -79,15 +79,7 @@ export default function Navbar() {
                                                 </Link>
                                             </li>
                                         )}
-                                        <li>
-                                            <button
-                                                onClick={logout}
-                                                className="bg-white text-green-600 px-4 py-2 rounded-full hover:bg-gray-100 transition flex items-center"
-                                            >
-                                                <LogOut className="mr-2" size={20} />
-                                                Déconnexion
-                                            </button>
-                                        </li>
+
                                     </>
                                 ) : null}
                             </ul>
@@ -118,13 +110,7 @@ export default function Navbar() {
                             <Book size={24} />
                             <span className="text-xs mt-1">Examens</span>
                         </Link>
-                        <button
-                            onClick={logout}
-                            className="flex flex-col items-center py-3 text-gray-500"
-                        >
-                            <LogOut size={24} />
-                            <span className="text-xs mt-1">Quitter</span>
-                        </button>
+
                     </div>
                 ) : null}
             </div>
