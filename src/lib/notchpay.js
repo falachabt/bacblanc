@@ -2,8 +2,8 @@
 import axios from 'axios';
 
 export class NotchPayService {
-    // constructor(publicKey = "pk.qoIGxn6D2TV5WNAXk0kfeIe8aT8Jo99I7em5QD9axKbjshtLBJ2nsXJ6Y79mYJtCxjC6fJ3qi4AHQzNwkAGHrToq7LHoctOf9na5v0cKAJA8WUyUK4YvcHmqBoyZg", secretKey) {
-    constructor(publicKey = "pk_test.3ZRJxkqwFn1TOsrsK2kQP5qvEvsajLI6Amxxbd96oplZ1QGRZfNKAM7uGVNUiH4WGtOg7FX6jXtXicqSWKpluXYmxLIlsnpfpha9WwfBUpA1KKa8WfmmUZeTX6567", secretKey) {
+    constructor(publicKey = "pk.qoIGxn6D2TV5WNAXk0kfeIe8aT8Jo99I7em5QD9axKbjshtLBJ2nsXJ6Y79mYJtCxjC6fJ3qi4AHQzNwkAGHrToq7LHoctOf9na5v0cKAJA8WUyUK4YvcHmqBoyZg", secretKey) {
+    // constructor(publicKey = "pk_test.3ZRJxkqwFn1TOsrsK2kQP5qvEvsajLI6Amxxbd96oplZ1QGRZfNKAM7uGVNUiH4WGtOg7FX6jXtXicqSWKpluXYmxLIlsnpfpha9WwfBUpA1KKa8WfmmUZeTX6567", secretKey) {
         this.secretKey = secretKey;
         this.client = axios.create({
             baseURL: 'https://api.notchpay.co',
