@@ -195,9 +195,7 @@ export function TokenAuthProvider({ children }) {
 
             // Rediriger vers la sélection de concours si le type n'est pas défini
             // Skip pour les admins en mode fallback
-            if (!userProfile.concours_type && !supabaseError) {
-                router.push('/concours-selection');
-            }
+
 
         } catch (error) {
             console.error("Error during token authentication:", error);
