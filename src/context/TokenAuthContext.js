@@ -238,6 +238,10 @@ export function TokenAuthProvider({ children }) {
             }
 
             setProfile(data);
+            setUser(prev => ({
+                ...prev,
+                concours_type: concoursType
+            }));
             return { data, error: null };
         } catch (error) {
             console.error("Error updating concours type:", error.message);
