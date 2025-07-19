@@ -30,7 +30,7 @@ export default function ConcoursSelectionPage() {
     // Si déjà connecté avec un type de concours, redirection vers la page des examens
     useEffect(() => {
         if (!loading) {
-            if (user && profile?.concours_type) {
+            if (user && user?.concours_type) {
                 router.push('/exams');
             } else if (!user) {
                 // Si pas d'utilisateur, rediriger vers l'accueil
