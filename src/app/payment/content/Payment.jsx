@@ -1002,7 +1002,7 @@ export default function PaymentPageContent() {
                                 Payer l'accès à tous les examens
                             </h3>
                             <p className="text-sm text-gray-600 mb-2">
-                                Débloquez l'accès à tous les examens disponibles pour votre série BAC.
+                                Débloquez l'accès à tous les examens disponibles pour votre Concour Blanc.
                             </p>
                             <div className="flex items-center justify-between text-green-700 font-medium">
                                 <span>Prix total:</span>
