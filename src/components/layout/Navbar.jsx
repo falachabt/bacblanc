@@ -110,6 +110,16 @@ export default function Navbar() {
                             <Book size={24} />
                             <span className="text-xs mt-1">Examens</span>
                         </Link>
+                        {user && isAdmin(user.external_id || user.id) && (
+                            <Link
+                                href="/admin"
+                                className={`flex items-center hover:text-green-200 transition ${pathname === '/admin' ? 'font-bold' : ''}`}
+                                >
+                                <Settings className="mr-2" size={20} />
+                                Admin
+                            </Link>
+                                            
+                        )}
 
                     </div>
                 ) : null}
